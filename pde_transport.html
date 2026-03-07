@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transport Equation Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+:root {
+  --bg:      #e8f5e9;
+  --bg2:     #f1f8f1;
+  --card:    #ffffff;
+  --border:  #a5d6a7;
+  --accent:  #2e7d32;
+  --accent2: #66bb6a;
+  --text:    #1b2e1c;
+  --text2:   #4a6e4c;
+  --exact:   #1565c0;
+  --num:     #e65100;
+  --char:    #6a1b9a;
+  --danger:  #c62828;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Crimson Pro',Georgia,serif;
+  background:var(--bg);
+  color:var(--text);
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+/* ── HEADER ── */
+header{
+  background:var(--accent);
+  color:#fff;
+  padding:10px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+  flex-shrink:0;
+}
+header h1{font-size:1.35rem;font-weight:600;letter-spacing:.4px}
+.subtitle{font-style:italic;opacity:.85;font-size:.9rem;margin-left:14px;font-family:'JetBrains Mono',monospace}
+/* ── BODY LAYOUT ── */
+.app-body{display:flex;flex:1;min-height:0}
+/* ── SIDEBAR ── */
+.sidebar{
+  width:252px;flex-shrink:0;
+  background:var(--bg2);
+  border-right:1.5px solid var(--border);
+  padding:12px;
+  overflow-y:auto;
+  display:flex;flex-direction:column;gap:10px;
+}
+.cfg{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px 12px;
+}
+.cfg h3{
+  font-size:.72rem;text-transform:uppercase;letter-spacing:1.1px;
+  color:var(--accent);margin-bottom:8px;
+  font-family:'JetBrains Mono',monospace;font-weight:500;
+}
+.param{margin-bottom:9px}
+.param label{display:flex;justify-content:space-between;font-size:.86rem;color:var(--text2);margin-bottom:3px}
+.param label span{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--accent);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;height:18px}
+select{
+  width:100%;padding:5px 7px;
+  border:1px solid var(--border);border-radius:5px;
+  background:#fff;font-family:'JetBrains Mono',monospace;
+  font-size:.82rem;color:var(--text);cursor:pointer;
+}
+.trow{display:flex;justify-content:space-between;align-items:center;font-size:.84rem;color:var(--text2);margin-bottom:5px}
+.tog{position:relative;width:34px;height:19px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.ts{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s}
+.ts::before{content:'';position:absolute;width:13px;height:13px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s}
+.tog input:checked+.ts{background:var(--accent2)}
+.tog input:checked+.ts::before{transform:translateX(15px)}
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;padding:12px;gap:10px;min-height:0;overflow:hidden}
+/* ── TABS ── */
+.tabs{display:flex;gap:3px;flex-shrink:0}
+.tbtn{
+  padding:6px 16px;border:1px solid var(--border);
+  border-radius:6px 6px 0 0;background:var(--bg2);color:var(--text2);
+  cursor:pointer;font-family:'Crimson Pro',serif;font-size:.92rem;
+  transition:all .2s;border-bottom:none;
+}
+.tbtn.active{background:var(--card);color:var(--accent);font-weight:600;border-color:var(--border);position:relative;top:1px}
+/* ── CANVAS AREA ── */
+.canvas-container{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:0 8px 8px 8px;padding:12px;
+  flex:1;display:flex;flex-direction:column;gap:10px;min-height:0;
+}
+.ctrl-bar{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:7px;padding:8px 12px;flex-shrink:0;
+}
+.btn{
+  padding:5px 14px;border:none;border-radius:6px;
+  cursor:pointer;font-family:'Crimson Pro',serif;
+  font-size:.92rem;font-weight:600;transition:all .18s;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#1b5e20}
+.btn-sec{background:var(--bg2);color:var(--text);border:1px solid var(--border)}
+.btn-sec:hover{background:var(--border)}
+.btn-rst{background:#ffebee;color:var(--danger);border:1px solid #ffcdd2}
+.btn-rst:hover{background:#ffcdd2}
+.btn-hlp{background:#fff3e0;color:#e65100;border:1px solid #ffe0b2}
+.btn-hlp:hover{background:#ffe0b2}
+.tdisplay{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--text2);margin-left:auto}
+.cfl-badge{font-family:'JetBrains Mono',monospace;font-size:.78rem;padding:3px 9px;border-radius:12px;border:1px solid}
+.cfl-ok{background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7}
+.cfl-warn{background:#fff3e0;color:#e65100;border-color:#ffcc80}
+.cfl-bad{background:#ffebee;color:#c62828;border-color:#ef9a9a}
+.legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px;font-size:.8rem;color:var(--text2)}
+.ll{width:20px;height:2.5px;border-radius:2px}
+/* canvas rows */
+.crow{display:flex;gap:10px;flex:1;min-height:0}
+.cwrap{flex:1;position:relative;background:#fafffe;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.cwrap canvas{width:100%;height:100%;display:block}
+.clabel{
+  position:absolute;top:7px;left:10px;
+  font-size:.74rem;color:var(--text2);
+  font-family:'JetBrains Mono',monospace;pointer-events:none;
+  background:rgba(255,255,255,.88);padding:2px 6px;border-radius:4px;
+}
+/* ── STATUS BAR ── */
+.sbar{
+  background:var(--bg2);border-top:1px solid var(--border);
+  padding:3px 16px;font-size:.75rem;color:var(--text2);
+  font-family:'JetBrains Mono',monospace;
+  display:flex;gap:20px;flex-shrink:0;flex-wrap:wrap;
+}
+/* ── HELP MODAL ── */
+.moverlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.5);z-index:200;
+  align-items:center;justify-content:center;
+}
+.moverlay.open{display:flex}
+.modal{
+  background:var(--card);border-radius:12px;
+  max-width:680px;width:92%;max-height:88vh;
+  display:flex;flex-direction:column;
+  box-shadow:0 10px 50px rgba(0,0,0,.3);overflow:hidden;
+}
+.mhdr{
+  background:var(--accent);color:#fff;
+  padding:14px 18px;display:flex;
+  justify-content:space-between;align-items:center;
+}
+.mhdr h2{font-size:1.12rem}
+.mclose{background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;opacity:.8;line-height:1}
+.mclose:hover{opacity:1}
+.mnav{
+  display:flex;gap:3px;padding:8px 14px;
+  background:#f4faf4;border-bottom:1px solid var(--border);
+  overflow-x:auto;flex-shrink:0;
+}
+.mnbtn{
+  padding:4px 11px;border:1px solid var(--border);border-radius:14px;
+  background:#fff;font-size:.8rem;cursor:pointer;white-space:nowrap;
+  transition:all .18s;font-family:'Crimson Pro',serif;
+}
+.mnbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mbody{
+  flex:1;padding:18px 22px;overflow-y:auto;
+  line-height:1.75;font-size:.97rem;
+}
+.mbody h3{color:var(--accent);font-size:1.08rem;margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.mbody p{margin-bottom:10px}
+.mbody ul{padding-left:22px;margin-bottom:10px}
+.mbody li{margin-bottom:5px}
+.mbox{text-align:center;padding:11px;background:#f7fdf7;border:1px solid var(--border);border-radius:6px;margin:10px 0;font-size:1.05rem}
+.abox{background:#e8f5e9;border-left:4px solid var(--accent2);padding:11px 15px;border-radius:0 6px 6px 0;margin:10px 0;font-style:italic}
+.itable{width:100%;border-collapse:collapse;font-size:.88rem;margin:10px 0}
+.itable th{background:var(--accent);color:#fff;padding:7px 11px;text-align:left}
+.itable td{padding:6px 11px;border-bottom:1px solid var(--border)}
+.itable tr:nth-child(even) td{background:#f1f8f1}
+code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:#f1f8f1;padding:1px 5px;border-radius:3px;color:var(--accent)}
+/* Fix KaTeX color inheritance only — never touch fonts or metrics */
+.katex .mopen, .katex .mclose, .katex .mord,
+.katex .mbin,  .katex .mrel,   .katex .mop,
+.katex .mpunct { color: inherit !important; }
+/* KaTeX assumes content-box sizing — global border-box reset breaks delimiter height calculations */
+.katex, .katex * { box-sizing: content-box !important; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:1.5rem">🌊</span>
+    <h1>Transport Equation Explorer</h1>
+    <span class="subtitle">u_t + c·u_x = 0</span>
+  </div>
+  <button class="btn btn-hlp" onclick="openHelp()">📖 Help / Theory</button>
+</header>
+
+<div class="app-body">
+<!-- SIDEBAR -->
+<div class="sidebar">
+
+  <div class="cfg">
+    <h3>Wave Parameter</h3>
+    <div class="param">
+      <label>Wave speed c <span id="val-c">1.0</span></label>
+      <input type="range" id="sl-c" min="-3" max="3" step="0.1" value="1" oninput="upC(this.value)">
+    </div>
+  </div>
+
+  <div class="cfg">
+    <h3>Initial Condition</h3>
+    <div class="param">
+      <label>Shape</label>
+      <select id="ic-sel" onchange="resetSim()">
+        <option value="gaussian">Gaussian</option>
+        <option value="square">Square Pulse</option>
+        <option value="sine">Sine Burst</option>
+        <option value="triangle">Triangle</option>
+        <option value="double">Double Gaussian</option>
+        <option value="asymm">Asymmetric Pulse</option>
+      </select>
+    </div>
+    <div class="param">
+      <label>Width σ <span id="val-sig">0.30</span></label>
+      <input type="range" id="sl-sig" min="0.05" max="0.6" step="0.01" value="0.3" oninput="upSig(this.value)">
+    </div>
+    <div class="param">
+      <label>Amplitude A <span id="val-amp">1.0</span></label>
+      <input type="range" id="sl-amp" min="0.3" max="2.0" step="0.1" value="1" oninput="upAmp(this.value)">
+    </div>
+  </div>
+
+  <div class="cfg">
+    <h3>Numerical Setup</h3>
+    <div class="param">
+      <label>Grid points N <span id="val-N">200</span></label>
+      <input type="range" id="sl-N" min="50" max="500" step="50" value="200" oninput="upN(this.value)">
+    </div>
+    <div class="param">
+      <label>CFL number ν <span id="val-cfl">0.90</span></label>
+      <input type="range" id="sl-cfl" min="0.1" max="1.5" step="0.05" value="0.9" oninput="upCFL(this.value)">
+    </div>
+    <div class="param">
+      <label>Scheme</label>
+      <select id="sch-sel" onchange="schemeChanged()">
+        <option value="upwind">Upwind (1st order)</option>
+        <option value="lax">Lax-Wendroff (2nd order)</option>
+        <option value="laxf">Lax-Friedrichs</option>
+        <option value="center">Centered (unstable!)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="cfg">
+    <h3>Display</h3>
+    <div class="trow"><span>Exact solution</span>
+      <label class="tog"><input type="checkbox" id="tog-exact" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Numerical solution</span>
+      <label class="tog"><input type="checkbox" id="tog-num" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Initial profile</span>
+      <label class="tog"><input type="checkbox" id="tog-init" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Grid dots</span>
+      <label class="tog"><input type="checkbox" id="tog-dots" onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Fill under curve</span>
+      <label class="tog"><input type="checkbox" id="tog-fill" checked onchange="redraw()"><span class="ts"></span></label></div>
+  </div>
+
+  <div class="cfg">
+    <h3>Animation</h3>
+    <div class="param">
+      <label>Speed <span id="val-spd">1.0</span>×</label>
+      <input type="range" id="sl-spd" min="0.1" max="5" step="0.1" value="1" oninput="upSpd(this.value)">
+    </div>
+    <div class="param">
+      <label>Loop at T <span id="val-tmax">6.0</span></label>
+      <input type="range" id="sl-tmax" min="2" max="20" step="1" value="6" oninput="upTmax(this.value)">
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- MAIN -->
+<div class="main">
+  <div class="tabs">
+    <button class="tbtn active" onclick="switchTab('prop',this)">🌊 Propagation</button>
+    <button class="tbtn" onclick="switchTab('xt',this)">📐 x–t Diagram</button>
+    <button class="tbtn" onclick="switchTab('cmp',this)">📊 Scheme Comparison</button>
+    <button class="tbtn" onclick="switchTab('gal',this)">🔬 PDE Gallery</button>
+  </div>
+
+  <div class="canvas-container">
+    <!-- CONTROL BAR -->
+    <div class="ctrl-bar">
+      <button class="btn btn-primary" id="btn-play" onclick="togglePlay()">▶ Play</button>
+      <button class="btn btn-sec" onclick="stepFwd()">⏭ Step</button>
+      <button class="btn btn-rst" onclick="resetSim()">↺ Reset</button>
+      <div class="legend">
+        <div class="li"><div class="ll" style="background:#1565c0"></div>Exact</div>
+        <div class="li"><div class="ll" style="background:#e65100;border-top:2px dashed #e65100;height:0;margin-top:1px"></div>Numerical</div>
+        <div class="li"><div class="ll" style="background:#9e9e9e"></div>Initial</div>
+      </div>
+      <span class="tdisplay" id="tdisplay">t = 0.000</span>
+      <span class="cfl-badge cfl-ok" id="cfl-badge">ν = 0.90</span>
+    </div>
+
+    <!-- TAB: PROPAGATION -->
+    <div id="tab-prop" class="crow">
+      <div class="cwrap" style="flex:2.2">
+        <canvas id="cv-main"></canvas>
+        <div class="clabel">u(x, t) — Solution Profile</div>
+      </div>
+      <div class="cwrap" style="flex:1">
+        <canvas id="cv-err"></canvas>
+        <div class="clabel">|u_exact − u_numerical|</div>
+      </div>
+    </div>
+
+    <!-- TAB: x-t DIAGRAM -->
+    <div id="tab-xt" class="crow" style="display:none">
+      <div class="cwrap">
+        <canvas id="cv-xt"></canvas>
+        <div class="clabel">x–t Spacetime · Click to highlight a characteristic</div>
+      </div>
+    </div>
+
+    <!-- TAB: SCHEME COMPARISON -->
+    <div id="tab-cmp" class="crow" style="display:none">
+      <div class="cwrap">
+        <canvas id="cv-cmp"></canvas>
+        <div class="clabel">All Schemes vs Exact</div>
+      </div>
+    </div>
+
+    <!-- TAB: PDE GALLERY -->
+    <div id="tab-gal" class="crow" style="display:none">
+      <div class="cwrap">
+        <canvas id="cv-gal-tr"></canvas>
+        <div class="clabel">Transport · u_t + cu_x = 0</div>
+      </div>
+      <div class="cwrap">
+        <canvas id="cv-gal-di"></canvas>
+        <div class="clabel">Diffusion · u_t = ν u_xx</div>
+      </div>
+      <div class="cwrap">
+        <canvas id="cv-gal-bu"></canvas>
+        <div class="clabel">Burgers · u_t + uu_x = 0</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /app-body -->
+
+<!-- STATUS BAR -->
+<div class="sbar">
+  <span id="sb-t">t = 0.000</span>
+  <span id="sb-dx">dx = —</span>
+  <span id="sb-dt">dt = —</span>
+  <span id="sb-l2">L² = —</span>
+  <span id="sb-sch">Scheme: Upwind</span>
+  <span id="sb-cfl">CFL ν = —</span>
+</div>
+
+<!-- HELP MODAL -->
+<div class="moverlay" id="help-modal">
+  <div class="modal">
+    <div class="mhdr">
+      <h2>📖 Transport Equation — Theory Guide</h2>
+      <button class="mclose" onclick="closeHelp()">×</button>
+    </div>
+    <div class="mnav" id="mnav"></div>
+    <div class="mbody" id="mbody"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  PARAMETERS
+// ═══════════════════════════════════════════════
+const P = {
+  c:     1.0,
+  sigma: 0.30,
+  amp:   1.0,
+  N:     200,
+  cfl:   0.90,
+  speed: 1.0,
+  tmax:  6.0,
+};
+
+let t=0, dx=0, dt=0;
+let u0=[], uNum=[], uExact=[];
+let sStates={};          // per-scheme arrays for cmp tab
+let uDiff=[], uBurg=[];  // gallery
+let playing=false, animId=null, lastTs=null;
+let curTab='prop';
+let xtClicks=[];         // highlighted characteristics
+
+const SCHEMES=['upwind','lax','laxf','center'];
+const SCHEME_LABELS={upwind:'Upwind 1st',lax:'Lax-Wendroff',laxf:'Lax-Friedrichs',center:'Centered (!)'};
+const SCHEME_COLORS={upwind:'#e65100',lax:'#1565c0',laxf:'#6a1b9a',center:'#c62828'};
+
+// ═══════════════════════════════════════════════
+//  GRID & IC
+// ═══════════════════════════════════════════════
+function computeGrid(){
+  dx = 1.0/P.N;
+  dt = P.cfl * dx / Math.max(Math.abs(P.c), 0.01);
+}
+
+function buildIC(){
+  const tp=document.getElementById('ic-sel').value;
+  return Array.from({length:P.N},(_,j)=>{
+    const x=j*dx;
+    const xc=0.5, s=P.sigma, A=P.amp;
+    switch(tp){
+      case 'gaussian': return A*Math.exp(-((x-xc)**2)/(2*s*s));
+      case 'square':   return Math.abs(x-xc)<s ? A : 0;
+      case 'sine':     return Math.abs(x-xc)<s*1.5 ? A*Math.sin(Math.PI*(x-xc)/(s*1.5)) : 0;
+      case 'triangle': {const d=Math.abs(x-xc);return d<s?A*(1-d/s):0;}
+      case 'double': {
+        const c1=0.33,c2=0.67,s2=s*.65;
+        return A*(Math.exp(-((x-c1)**2)/(2*s2*s2))+0.65*Math.exp(-((x-c2)**2)/(2*s2*s2)));
+      }
+      case 'asymm': return Math.abs(x-xc)<s ? A*Math.exp(-(x-xc+s)/(s*0.6))*Math.sin(Math.PI*(x-xc+s)/(s*2)) : 0;
+      default: return A*Math.exp(-((x-xc)**2)/(2*s*s));
+    }
+  });
+}
+
+function exactSolution(){
+  return Array.from({length:P.N},(_,j)=>{
+    const x=j*dx;
+    let x0=((x-P.c*t)%1+1)%1;
+    const fi=x0/dx;
+    const jj=Math.floor(fi)%P.N;
+    const fr=fi-Math.floor(fi);
+    return u0[jj]*(1-fr)+u0[(jj+1)%P.N]*fr;
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  NUMERICAL SCHEMES
+// ═══════════════════════════════════════════════
+function stepScheme(u, sch){
+  const N=P.N, r=P.c*dt/dx;
+  const un=new Array(N);
+  for(let j=0;j<N;j++){
+    const jm=(j-1+N)%N, jp=(j+1)%N;
+    switch(sch){
+      case 'upwind':
+        un[j]=P.c>=0 ? u[j]-r*(u[j]-u[jm]) : u[j]-r*(u[jp]-u[j]); break;
+      case 'lax':
+        un[j]=u[j]-0.5*r*(u[jp]-u[jm])+0.5*r*r*(u[jp]-2*u[j]+u[jm]); break;
+      case 'laxf':
+        un[j]=0.5*(u[jp]+u[jm])-0.5*r*(u[jp]-u[jm]); break;
+      case 'center':
+        un[j]=u[j]-0.5*r*(u[jp]-u[jm]); break;
+      default:
+        un[j]=u[j];
+    }
+    // clamp to avoid NaN blow-up
+    un[j]=isFinite(un[j])?Math.max(-50,Math.min(50,un[j])):0;
+  }
+  return un;
+}
+
+function stepDiffusion(u){
+  const nu_d=0.002, N=P.N;
+  const r=nu_d*dt/(dx*dx);
+  if(r>0.5) return u;  // stability guard
+  const un=new Array(N);
+  for(let j=0;j<N;j++){
+    const jm=(j-1+N)%N,jp=(j+1)%N;
+    un[j]=u[j]+r*(u[jp]-2*u[j]+u[jm]);
+  }
+  return un;
+}
+
+function stepBurgers(u){
+  const N=P.N, dtb=dt*0.5;
+  const un=new Array(N);
+  for(let j=0;j<N;j++){
+    const jm=(j-1+N)%N,jp=(j+1)%N;
+    const fR=u[j]>=0?0.5*u[j]*u[j]:0.5*u[jp]*u[jp];
+    const fL=u[jm]>=0?0.5*u[jm]*u[jm]:0.5*u[j]*u[j];
+    un[j]=u[j]-(dtb/dx)*(fR-fL);
+    un[j]=isFinite(un[j])?Math.max(-20,Math.min(20,un[j])):0;
+  }
+  return un;
+}
+
+// ═══════════════════════════════════════════════
+//  SIMULATION CONTROL
+// ═══════════════════════════════════════════════
+function resetSim(){
+  playing=false;
+  document.getElementById('btn-play').textContent='▶ Play';
+  if(animId) cancelAnimationFrame(animId);
+  lastTs=null; t=0; xtClicks=[];
+  computeGrid();
+  u0=buildIC();
+  uExact=[...u0]; uNum=[...u0];
+  sStates={}; SCHEMES.forEach(s=>sStates[s]=[...u0]);
+  uDiff=[...u0]; uBurg=[...u0];
+  updateStatus(); redraw();
+}
+
+function advance(realMs){
+  const simDelta=Math.min(realMs*P.speed*0.001,0.08);
+  let steps=Math.max(1,Math.round(simDelta/dt));
+  const scheme=document.getElementById('sch-sel').value;
+  for(let s=0;s<steps;s++){
+    t+=dt;
+    if(t>P.tmax){
+      t=0;
+      uNum=[...u0];
+      SCHEMES.forEach(k=>sStates[k]=[...u0]);
+      uDiff=[...u0]; uBurg=[...u0];
+    }
+    uNum=stepScheme(uNum,scheme);
+    SCHEMES.forEach(k=>sStates[k]=stepScheme(sStates[k],k));
+    uDiff=stepDiffusion(uDiff);
+    uBurg=stepBurgers(uBurg);
+  }
+  uExact=exactSolution();
+}
+
+function loop(ts){
+  if(!playing) return;
+  if(lastTs!==null) advance(ts-lastTs);
+  lastTs=ts;
+  updateStatus(); redraw();
+  animId=requestAnimationFrame(loop);
+}
+
+function togglePlay(){
+  playing=!playing;
+  document.getElementById('btn-play').textContent=playing?'⏸ Pause':'▶ Play';
+  if(playing){lastTs=null; animId=requestAnimationFrame(loop);}
+}
+
+function stepFwd(){
+  if(playing) return;
+  const scheme=document.getElementById('sch-sel').value;
+  for(let s=0;s<30;s++){
+    t+=dt;
+    if(t>P.tmax){t=0;uNum=[...u0];SCHEMES.forEach(k=>sStates[k]=[...u0]);uDiff=[...u0];uBurg=[...u0];}
+    uNum=stepScheme(uNum,scheme);
+    SCHEMES.forEach(k=>sStates[k]=stepScheme(sStates[k],k));
+    uDiff=stepDiffusion(uDiff);
+    uBurg=stepBurgers(uBurg);
+  }
+  uExact=exactSolution();
+  updateStatus(); redraw();
+}
+
+// ═══════════════════════════════════════════════
+//  DRAWING UTILITIES
+// ═══════════════════════════════════════════════
+function fitCanvas(cv){
+  const r=cv.parentElement.getBoundingClientRect();
+  cv.width=r.width; cv.height=r.height;
+}
+
+const PAD={l:44,r:18,t:22,b:34};
+
+function toCanvas(x,y,W,H,ymin,ymax){
+  const px=PAD.l+(x/(P.N-1))*(W-PAD.l-PAD.r);
+  const py=H-PAD.b-(y-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+  return[px,py];
+}
+
+function drawAxes(ctx,W,H,ymin,ymax,ylabel){
+  ctx.save();
+  ctx.strokeStyle='#aaa'; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b); ctx.lineTo(W-PAD.r,H-PAD.b);
+  ctx.stroke();
+  ctx.fillStyle='#666'; ctx.font='10px JetBrains Mono,monospace';
+  // x ticks
+  [0,.25,.5,.75,1].forEach(f=>{
+    const px=PAD.l+f*(W-PAD.l-PAD.r);
+    ctx.beginPath(); ctx.moveTo(px,H-PAD.b); ctx.lineTo(px,H-PAD.b+4); ctx.stroke();
+    ctx.fillText(f.toFixed(2),px-12,H-PAD.b+13);
+  });
+  // y ticks
+  let yticks=[];
+  for(let y=Math.ceil(ymin*4)/4;y<=ymax+.01;y+=.25) yticks.push(Math.round(y*100)/100);
+  yticks.forEach(y=>{
+    const py=H-PAD.b-(y-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    ctx.beginPath(); ctx.moveTo(PAD.l-3,py); ctx.lineTo(PAD.l,py); ctx.stroke();
+    ctx.fillText(y.toFixed(2),1,py+3.5);
+  });
+  // zero line
+  if(ymin<0){
+    const y0=H-PAD.b-(0-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    ctx.strokeStyle='#ccc'; ctx.lineWidth=0.7;
+    ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,y0); ctx.lineTo(W-PAD.r,y0); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // labels
+  ctx.fillStyle='#555'; ctx.font='11px Crimson Pro,serif';
+  ctx.fillText('x',W/2,H-1);
+  ctx.save(); ctx.translate(11,H/2); ctx.rotate(-Math.PI/2); ctx.fillText(ylabel,0,0); ctx.restore();
+  ctx.restore();
+}
+
+function plotLine(ctx,arr,W,H,ymin,ymax,color,lw,dash,fill){
+  if(!arr||arr.length===0) return;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.lineWidth=lw;
+  ctx.setLineDash(dash||[]);
+  ctx.beginPath();
+  arr.forEach((v,i)=>{
+    const[px,py]=toCanvas(i*(P.N-1)/(arr.length-1)*(arr.length-1)/1,v,W,H,ymin,ymax);
+    // correct: just map index 0..N-1 to x 0..1
+    const ppx=PAD.l+(i/(arr.length-1))*(W-PAD.l-PAD.r);
+    const ppy=H-PAD.b-(v-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    i===0?ctx.moveTo(ppx,ppy):ctx.lineTo(ppx,ppy);
+  });
+  ctx.stroke();
+  if(fill){
+    const y0py=H-PAD.b-(0-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    ctx.globalAlpha=0.13;
+    ctx.fillStyle=color;
+    ctx.lineTo(PAD.l+(W-PAD.l-PAD.r),y0py);
+    ctx.lineTo(PAD.l,y0py);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=1;
+  }
+  ctx.setLineDash([]); ctx.restore();
+}
+
+function plotDots(ctx,arr,W,H,ymin,ymax,color){
+  ctx.save(); ctx.fillStyle=color;
+  const step=Math.max(1,Math.floor(arr.length/80));
+  arr.forEach((v,i)=>{
+    if(i%step!==0) return;
+    const px=PAD.l+(i/(arr.length-1))*(W-PAD.l-PAD.r);
+    const py=H-PAD.b-(v-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    ctx.beginPath(); ctx.arc(px,py,2.8,0,2*Math.PI); ctx.fill();
+  });
+  ctx.restore();
+}
+
+function bgFill(ctx,W,H){
+  ctx.fillStyle='#fafffe'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#e0ece0'; ctx.lineWidth=0.5;
+  [.25,.5,.75].forEach(f=>{
+    const px=PAD.l+f*(W-PAD.l-PAD.r);
+    ctx.beginPath(); ctx.moveTo(px,PAD.t); ctx.lineTo(px,H-PAD.b); ctx.stroke();
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  TAB DRAWS
+// ═══════════════════════════════════════════════
+function drawProp(){
+  // Main solution
+  {
+    const cv=document.getElementById('cv-main');
+    fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const ymin=-0.25, ymax=P.amp*1.45+0.15;
+    bgFill(ctx,W,H);
+    const se=document.getElementById('tog-exact').checked;
+    const sn=document.getElementById('tog-num').checked;
+    const si=document.getElementById('tog-init').checked;
+    const sd=document.getElementById('tog-dots').checked;
+    const sf=document.getElementById('tog-fill').checked;
+    if(si) plotLine(ctx,u0,W,H,ymin,ymax,'#9e9e9e',1.3,[5,4],false);
+    if(se) plotLine(ctx,uExact,W,H,ymin,ymax,'#1565c0',2.6,[],sf);
+    if(sn){
+      if(sd) plotDots(ctx,uNum,W,H,ymin,ymax,'#e65100');
+      else   plotLine(ctx,uNum,W,H,ymin,ymax,'#e65100',2.1,[6,4],false);
+    }
+    drawAxes(ctx,W,H,ymin,ymax,'u');
+    // time + direction label
+    ctx.fillStyle='#2e7d32'; ctx.font='bold 12px JetBrains Mono,monospace';
+    ctx.fillText(`t = ${t.toFixed(3)}`,W-PAD.r-88,PAD.t+15);
+    ctx.fillStyle=P.c>=0?'#1565c0':'#c62828';
+    const arr=P.c>=0?'→':'←';
+    ctx.fillText(`c=${P.c.toFixed(1)} ${arr}`,PAD.l+6,PAD.t+15);
+  }
+  // Error canvas
+  {
+    const cv=document.getElementById('cv-err');
+    fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const err=uExact.map((v,i)=>Math.abs(v-(uNum[i]||0)));
+    const mx=Math.max(...err,1e-10);
+    bgFill(ctx,W,H);
+    // area fill
+    ctx.beginPath();
+    ctx.moveTo(PAD.l,H-PAD.b);
+    err.forEach((v,i)=>{
+      const px=PAD.l+(i/(err.length-1))*(W-PAD.l-PAD.r);
+      const py=H-PAD.b-(v/mx)*0.9*(H-PAD.t-PAD.b);
+      i===0?ctx.moveTo(px,H-PAD.b):null;
+      ctx.lineTo(px,py);
+    });
+    ctx.lineTo(PAD.l+(W-PAD.l-PAD.r),H-PAD.b);
+    ctx.closePath();
+    ctx.fillStyle='rgba(230,81,0,0.22)'; ctx.fill();
+    plotLine(ctx,err,W,H,0,mx*1.1,'#e65100',1.6,[],false);
+    drawAxes(ctx,W,H,0,mx*1.1,'err');
+    const L2=Math.sqrt(err.reduce((a,b)=>a+b*b,0)/err.length);
+    ctx.fillStyle='#c62828'; ctx.font='bold 11px JetBrains Mono,monospace';
+    ctx.fillText(`L² = ${L2.toExponential(2)}`,W-PAD.r-100,PAD.t+14);
+  }
+}
+
+function drawXT(){
+  const cv=document.getElementById('cv-xt');
+  fitCanvas(cv);
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const p={l:50,r:22,t:22,b:40};
+  const tmax=P.tmax;
+  function pmap(x,tv){
+    return[p.l+x*(W-p.l-p.r), H-p.b-tv/tmax*(H-p.t-p.b)];
+  }
+  ctx.fillStyle='#fafffe'; ctx.fillRect(0,0,W,H);
+
+  // background shading by u0 value along x
+  const nBands=P.N;
+  for(let j=0;j<nBands;j++){
+    const x1=j/nBands, x2=(j+1)/nBands;
+    const v=Math.max(0,Math.min(1,u0[Math.floor(j/nBands*P.N)]/(P.amp||1)));
+    const alpha=v*0.18;
+    ctx.fillStyle=`rgba(21,101,192,${alpha})`;
+    ctx.fillRect(p.l+x1*(W-p.l-p.r),p.t,(x2-x1)*(W-p.l-p.r),H-p.t-p.b);
+  }
+
+  // characteristics (faint)
+  ctx.strokeStyle='rgba(106,27,154,0.28)'; ctx.lineWidth=0.9;
+  ctx.setLineDash([3,3]);
+  for(let k=0;k<20;k++){
+    const x0=k/20;
+    ctx.beginPath();
+    let prev=null;
+    for(let ti=0;ti<=120;ti++){
+      const tv=ti/120*tmax;
+      const xv=((x0+P.c*tv)%1+1)%1;
+      const[px,py]=pmap(xv,tv);
+      if(!prev||(Math.abs(xv-prev)>0.4)){ctx.moveTo(px,py);}
+      else ctx.lineTo(px,py);
+      prev=xv;
+    }
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // user-highlighted characteristics
+  xtClicks.forEach((cl,ci)=>{
+    ctx.strokeStyle=`hsl(${ci*55+10},75%,38%)`; ctx.lineWidth=2.2;
+    ctx.beginPath();
+    let prev=null;
+    for(let ti=0;ti<=200;ti++){
+      const tv=ti/200*tmax;
+      const xv=((cl.x+P.c*tv)%1+1)%1;
+      const[px,py]=pmap(xv,tv);
+      if(!prev||Math.abs(xv-prev)>0.4){ctx.moveTo(px,py);}
+      else ctx.lineTo(px,py);
+      prev=xv;
+    }
+    ctx.stroke();
+    const[px0,py0]=pmap(cl.x,0);
+    ctx.fillStyle=`hsl(${ci*55+10},75%,38%)`;
+    ctx.beginPath(); ctx.arc(px0,py0,5,0,2*Math.PI); ctx.fill();
+  });
+
+  // current time marker
+  const[,cury]=pmap(0,t);
+  ctx.strokeStyle='#e65100'; ctx.lineWidth=1.5; ctx.setLineDash([8,4]);
+  ctx.beginPath(); ctx.moveTo(p.l,cury); ctx.lineTo(W-p.r,cury); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#e65100'; ctx.font='10px JetBrains Mono,monospace';
+  ctx.fillText(`t = ${t.toFixed(2)}`,W-p.r-52,cury-4);
+
+  // axes
+  ctx.strokeStyle='#888'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(p.l,p.t); ctx.lineTo(p.l,H-p.b); ctx.lineTo(W-p.r,H-p.b); ctx.stroke();
+  ctx.fillStyle='#666'; ctx.font='10px JetBrains Mono,monospace';
+  [0,.25,.5,.75,1].forEach(f=>{
+    const px=p.l+f*(W-p.l-p.r);
+    ctx.beginPath(); ctx.moveTo(px,H-p.b); ctx.lineTo(px,H-p.b+4); ctx.stroke();
+    ctx.fillText(f.toFixed(2),px-12,H-p.b+14);
+  });
+  [0,.25,.5,.75,1].forEach(f=>{
+    const tv=f*tmax, py=H-p.b-f*(H-p.t-p.b);
+    ctx.beginPath(); ctx.moveTo(p.l-3,py); ctx.lineTo(p.l,py); ctx.stroke();
+    ctx.fillText(tv.toFixed(1),1,py+3.5);
+  });
+  ctx.fillStyle='#444'; ctx.font='11px Crimson Pro,serif';
+  ctx.fillText('x',W/2,H-2);
+  ctx.save(); ctx.translate(12,H/2); ctx.rotate(-Math.PI/2); ctx.fillText('t',0,0); ctx.restore();
+  ctx.fillStyle='#2e7d32'; ctx.font='11px Crimson Pro,serif';
+  ctx.fillText('Click to add a characteristic',p.l+5,p.t+14);
+}
+
+function drawCmp(){
+  const cv=document.getElementById('cv-cmp');
+  fitCanvas(cv);
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const ymin=-0.4, ymax=P.amp*1.7;
+  const rPad={l:PAD.l,r:130,t:PAD.t,b:PAD.b};
+  const savedR=PAD.r; PAD.r=rPad.r;
+  bgFill(ctx,W,H);
+  plotLine(ctx,u0,W,H,ymin,ymax,'#9e9e9e',1.2,[5,4],false);
+  plotLine(ctx,uExact,W,H,ymin,ymax,'#1b2e1c',2.8,[],false);
+  SCHEMES.forEach((s,i)=>{
+    if(!sStates[s]) return;
+    const dash=s==='center'?[4,3]:[];
+    plotLine(ctx,sStates[s],W,H,ymin,ymax,SCHEME_COLORS[s],1.9,dash,false);
+  });
+  PAD.r=savedR;
+
+  // custom axes accounting for rPad
+  ctx.save();
+  ctx.strokeStyle='#aaa'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b); ctx.lineTo(W-rPad.r,H-PAD.b); ctx.stroke();
+  ctx.fillStyle='#666'; ctx.font='10px JetBrains Mono,monospace';
+  [0,.25,.5,.75,1].forEach(f=>{
+    const px=PAD.l+f*(W-PAD.l-rPad.r);
+    ctx.beginPath(); ctx.moveTo(px,H-PAD.b); ctx.lineTo(px,H-PAD.b+4); ctx.stroke();
+    ctx.fillText(f.toFixed(2),px-12,H-PAD.b+13);
+  });
+  let ytt=[]; for(let y=Math.ceil(ymin*4)/4;y<=ymax+.01;y+=.25) ytt.push(Math.round(y*100)/100);
+  ytt.forEach(y=>{
+    const py=H-PAD.b-(y-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    ctx.beginPath(); ctx.moveTo(PAD.l-3,py); ctx.lineTo(PAD.l,py); ctx.stroke();
+    ctx.fillText(y.toFixed(2),1,py+3.5);
+  });
+  ctx.restore();
+
+  // right legend
+  const items=[
+    {color:'#1b2e1c',label:'Exact',dash:[]},
+    {color:'#9e9e9e',label:'Initial',dash:[5,4]},
+    ...SCHEMES.map(s=>({color:SCHEME_COLORS[s],label:SCHEME_LABELS[s],dash:s==='center'?[4,3]:[]}))
+  ];
+  items.forEach((it,i)=>{
+    const lx=W-127, ly=PAD.t+18+i*22;
+    ctx.save();
+    ctx.strokeStyle=it.color; ctx.lineWidth=2; ctx.setLineDash(it.dash);
+    ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx+22,ly); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle='#333'; ctx.font='11px Crimson Pro,serif';
+    ctx.fillText(it.label,lx+26,ly+4);
+    ctx.restore();
+  });
+  ctx.fillStyle='#2e7d32'; ctx.font='bold 12px JetBrains Mono,monospace';
+  ctx.fillText(`t = ${t.toFixed(3)}`,PAD.l+5,PAD.t+14);
+  const cflV=Math.abs(P.c)*dt/dx;
+  ctx.fillStyle=cflV>1?'#c62828':'#2e7d32';
+  ctx.font='11px JetBrains Mono,monospace';
+  ctx.fillText(`CFL ν = ${cflV.toFixed(2)}`,W-127,H-PAD.b+18);
+}
+
+function drawGal(){
+  const items=[
+    {id:'cv-gal-tr',data:uExact,color:'#1565c0'},
+    {id:'cv-gal-di',data:uDiff, color:'#2e7d32'},
+    {id:'cv-gal-bu',data:uBurg, color:'#b71c1c'},
+  ];
+  items.forEach(it=>{
+    const cv=document.getElementById(it.id);
+    fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const ymin=-0.3, ymax=P.amp*1.5;
+    bgFill(ctx,W,H);
+    plotLine(ctx,u0,W,H,ymin,ymax,'#9e9e9e',1.2,[5,4],false);
+    const sf=document.getElementById('tog-fill').checked;
+    plotLine(ctx,it.data,W,H,ymin,ymax,it.color,2.5,[],sf);
+    drawAxes(ctx,W,H,ymin,ymax,'u');
+    ctx.fillStyle=it.color; ctx.font='bold 11px JetBrains Mono,monospace';
+    ctx.fillText(`t = ${t.toFixed(3)}`,W-PAD.r-80,PAD.t+13);
+  });
+}
+
+function redraw(){
+  switch(curTab){
+    case 'prop': drawProp(); break;
+    case 'xt':   drawXT();   break;
+    case 'cmp':  drawCmp();  break;
+    case 'gal':  drawGal();  break;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  STATUS
+// ═══════════════════════════════════════════════
+function updateStatus(){
+  const cflV=Math.abs(P.c)*dt/dx;
+  document.getElementById('tdisplay').textContent=`t = ${t.toFixed(3)}`;
+  document.getElementById('sb-t').textContent=`t = ${t.toFixed(3)}`;
+  document.getElementById('sb-dx').textContent=`dx = ${dx.toFixed(5)}`;
+  document.getElementById('sb-dt').textContent=`dt = ${dt.toFixed(5)}`;
+  const err=uExact.map((v,i)=>(v-(uNum[i]||0))**2);
+  const L2=Math.sqrt(err.reduce((a,b)=>a+b,0)/err.length);
+  document.getElementById('sb-l2').textContent=`L² = ${L2.toExponential(2)}`;
+  const sch=document.getElementById('sch-sel').value;
+  document.getElementById('sb-sch').textContent=`Scheme: ${SCHEME_LABELS[sch]||sch}`;
+  document.getElementById('sb-cfl').textContent=`CFL ν = ${cflV.toFixed(3)}`;
+  const badge=document.getElementById('cfl-badge');
+  badge.textContent=`ν = ${cflV.toFixed(2)}`;
+  badge.className='cfl-badge '+(cflV<=1?'cfl-ok':cflV<=1.2?'cfl-warn':'cfl-bad');
+}
+
+// ═══════════════════════════════════════════════
+//  PARAM UPDATERS
+// ═══════════════════════════════════════════════
+function upC(v){
+  P.c=parseFloat(v);
+  document.getElementById('val-c').textContent=P.c.toFixed(1);
+  computeGrid(); uExact=exactSolution(); updateStatus(); redraw();
+}
+function upSig(v){P.sigma=parseFloat(v);document.getElementById('val-sig').textContent=P.sigma.toFixed(2);resetSim();}
+function upAmp(v){P.amp=parseFloat(v);document.getElementById('val-amp').textContent=P.amp.toFixed(1);resetSim();}
+function upN(v){P.N=parseInt(v);document.getElementById('val-N').textContent=P.N;resetSim();}
+function upCFL(v){
+  P.cfl=parseFloat(v);
+  document.getElementById('val-cfl').textContent=P.cfl.toFixed(2);
+  computeGrid(); updateStatus(); redraw();
+}
+function upSpd(v){P.speed=parseFloat(v);document.getElementById('val-spd').textContent=P.speed.toFixed(1);}
+function upTmax(v){P.tmax=parseFloat(v);document.getElementById('val-tmax').textContent=P.tmax.toFixed(1);}
+function schemeChanged(){updateStatus(); redraw();}
+
+// ═══════════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════
+function switchTab(tab,btn){
+  curTab=tab;
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['prop','xt','cmp','gal'].forEach(t=>{
+    const el=document.getElementById(`tab-${t}`);
+    if(el) el.style.display=t===tab?'flex':'none';
+  });
+  setTimeout(redraw,30);
+}
+
+// ─── x-t click ───
+document.getElementById('cv-xt').addEventListener('click',function(e){
+  const r=this.getBoundingClientRect();
+  const p={l:50,r:22,t:22,b:40};
+  const W=this.width,H=this.height;
+  const mx=(e.clientX-r.left)*(W/r.width);
+  const my=(e.clientY-r.top)*(H/r.height);
+  const x=(mx-p.l)/(W-p.l-p.r);
+  const tv=(1-(my-p.t)/(H-p.t-p.b))*P.tmax;
+  if(x>=0&&x<=1){
+    const x0=((x-P.c*tv)%1+1)%1;
+    xtClicks.push({x:x0});
+    if(xtClicks.length>6) xtClicks.shift();
+    drawXT();
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  HELP MODAL
+// ═══════════════════════════════════════════════
+const HELP=[
+  {
+    title:'What Is It?',
+    html:`
+    <h3>The Transport Equation</h3>
+    <p>The <strong>transport (advection) equation</strong> is one of the simplest and most fundamental PDEs. It describes how a quantity is <em>carried along</em> by a constant-speed flow:</p>
+    <div class="mbox">\\(u_t + c\\,u_x = 0\\)</div>
+    <p>Here \\(u(x,t)\\) is the quantity of interest (density, temperature, concentration…) and \\(c\\) is the <strong>wave speed</strong>.</p>
+    <p>The equation says: time rate of change of \\(u\\) plus \\(c\\) times its spatial gradient equals zero — information travels at speed \\(c\\) without distortion.</p>
+    <p>This is the prototypical <strong>hyperbolic PDE</strong>: information propagates along well-defined paths called <em>characteristics</em>. Unlike the diffusion (parabolic) or wave (hyperbolic 2nd-order) equations, the transport equation captures <em>pure translation</em>.`
+  },
+  {
+    title:'River Analogy',
+    html:`
+    <h3>🌊 The River Analogy</h3>
+    <div class="abox">
+      Imagine dropping a handful of leaves on a flowing river. Each leaf drifts downstream at speed \\(c\\) — the shape of the leaf pattern <strong>never changes</strong>, it simply translates. The transport equation is the mathematical expression of exactly this.
+    </div>
+    <p>Key intuitions:</p>
+    <ul>
+      <li>The profile \\(u(x,t)\\) is just the initial profile \\(u(x,0)\\) <em>shifted</em> by \\(ct\\).</li>
+      <li><strong>No dispersion</strong> — the wave does not change shape.</li>
+      <li><strong>No dissipation</strong> — the amplitude does not decay.</li>
+      <li>Positive \\(c\\) → rightward; negative \\(c\\) → leftward.</li>
+    </ul>
+    <p>Compare with <strong>diffusion</strong>: drop ink in still water and the blob spreads and blurs. The transport equation has zero spreading — pure rigid motion. The <em>PDE Gallery</em> tab shows all three side-by-side from the same initial condition.</p>`
+  },
+  {
+    title:'Exact Solution',
+    html:`
+    <h3>Exact Solution</h3>
+    <p>Given initial data \\(u(x,0)=f(x)\\), the transport equation has an exact closed-form solution:</p>
+    <div class="mbox">\\(\\boxed{u(x,t)=f(x-ct)}\\)</div>
+    <p>The solution is simply the initial profile <strong>shifted</strong> to the right by \\(ct\\) (for \\(c>0\\)).</p>
+    <p><strong>Verification:</strong></p>
+    <div class="mbox">\\(u_t = -c\\,f'(x-ct),\\quad u_x = f'(x-ct)\\implies u_t+c\\,u_x=0\\;\\checkmark\\)</div>
+    <p>This elegant result means: <em>any</em> smooth initial shape propagates unchanged. In the app, the blue curve is always this exact solution, and any deviation of the orange numerical curve is purely a numerical artifact.</p>`
+  },
+  {
+    title:'Characteristics',
+    html:`
+    <h3>Method of Characteristics</h3>
+    <p>The <strong>characteristic curves</strong> are lines in the \\((x,t)\\) plane along which \\(u\\) is constant:</p>
+    <div class="mbox">\\(x(t)=x_0+ct\\)</div>
+    <p><strong>Derivation:</strong> Along the curve \\(x(t)=x_0+ct\\):</p>
+    <div class="mbox">\\(\\frac{d}{dt}\\,u(x(t),t)=u_t+\\dot x\\,u_x=u_t+c\\,u_x=0\\)</div>
+    <p>So \\(u\\) is constant on each characteristic — the PDE just propagates initial data forward along straight lines of slope \\(\\tfrac{\\Delta x}{\\Delta t}=c\\).</p>
+    <p>In the <strong>x–t Diagram</strong> tab, you can see these as parallel lines. <em>Click anywhere in the diagram to highlight the characteristic through that point.</em></p>
+    <p>This concept generalises powerfully: for nonlinear Burgers, characteristics are still straight but carry different speeds \\(u\\). When they <em>cross</em>, a shock discontinuity forms — visible in the PDE Gallery tab.</p>`
+  },
+  {
+    title:'Upwind Scheme',
+    html:`
+    <h3>Finite Differences — The Upwind Scheme</h3>
+    <p>Naïve <strong>centered differences</strong> are <em>unconditionally unstable</em> for the transport equation. The fix is to bias the stencil in the direction the information comes from.</p>
+    <p>For \\(c>0\\) (flow from the left):</p>
+    <div class="mbox">\\(u_j^{n+1}=u_j^n-\\frac{c\\Delta t}{\\Delta x}\\bigl(u_j^n-u_{j-1}^n\\bigr)\\)</div>
+    <p>For \\(c<0\\): use \\((u_{j+1}^n - u_j^n)\\) instead.</p>
+    <p><strong>CFL stability condition:</strong></p>
+    <div class="mbox">\\(\\nu = \\left|\\frac{c\\,\\Delta t}{\\Delta x}\\right|\\leq 1\\)</div>
+    <p>The <span style="color:#2e7d32;font-weight:600">green badge</span> stays green when you're stable; push the CFL slider above 1 to watch the Centered scheme explode.</p>
+    <p>Upwind has <strong>numerical diffusion</strong> \\(\\sim\\tfrac{c\\Delta x}{2}(1-\\nu)\\) — it smears sharp features. Lax-Wendroff is 2nd-order accurate but can produce oscillations near discontinuities. Try both in the <em>Scheme Comparison</em> tab.</p>`
+  },
+  {
+    title:'PDE Connections',
+    html:`
+    <h3>Connections to Other PDEs</h3>
+    <table class="itable">
+      <tr><th>PDE</th><th>Equation</th><th>Behaviour</th></tr>
+      <tr><td><strong>Transport</strong></td><td>\\(u_t+cu_x=0\\)</td><td>Rigid translation</td></tr>
+      <tr><td><strong>Diffusion</strong></td><td>\\(u_t=\\nu u_{xx}\\)</td><td>Spreading &amp; smoothing</td></tr>
+      <tr><td><strong>Wave (2nd order)</strong></td><td>\\(u_{tt}=c^2u_{xx}\\)</td><td>Two counter-propagating waves</td></tr>
+      <tr><td><strong>Inviscid Burgers</strong></td><td>\\(u_t+u\\,u_x=0\\)</td><td>Nonlinear → shock formation</td></tr>
+      <tr><td><strong>Adv.–Diffusion</strong></td><td>\\(u_t+cu_x=\\nu u_{xx}\\)</td><td>Translation + spreading</td></tr>
+    </table>
+    <p>The transport equation is the <strong>linearisation</strong> of inviscid Burgers around the uniform state \\(u=c\\). In Burgers, wave speed equals \\(u\\) itself — fast crests overtake slow troughs and form a <strong>shock</strong>.</p>
+    <p>The <em>PDE Gallery</em> tab simulates all three PDEs simultaneously from the same initial condition so you can directly compare their behaviours.</p>`
+  }
+];
+
+let curSection=0;
+
+function buildNav(){
+  const nav=document.getElementById('mnav');
+  nav.innerHTML='';
+  HELP.forEach((s,i)=>{
+    const b=document.createElement('button');
+    b.className='mnbtn'+(i===0?' active':'');
+    b.textContent=s.title;
+    b.onclick=()=>showSection(i);
+    nav.appendChild(b);
+  });
+}
+
+function showSection(i){
+  curSection=i;
+  document.querySelectorAll('.mnbtn').forEach((b,j)=>b.classList.toggle('active',j===i));
+  const body=document.getElementById('mbody');
+  body.innerHTML=HELP[i].html;
+  if(window.renderMathInElement){
+    renderMathInElement(body,{delimiters:[
+      {left:'\\(',right:'\\)',display:false},
+      {left:'\\[',right:'\\]',display:true},
+    ]});
+  }
+}
+
+function openHelp(){
+  buildNav();
+  showSection(0);
+  document.getElementById('help-modal').classList.add('open');
+}
+function closeHelp(){document.getElementById('help-modal').classList.remove('open');}
+document.getElementById('help-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeHelp();});
+
+// ═══════════════════════════════════════════════
+//  RESIZE
+// ═══════════════════════════════════════════════
+let rzTimer;
+window.addEventListener('resize',()=>{
+  clearTimeout(rzTimer);
+  rzTimer=setTimeout(()=>redraw(),80);
+});
+
+// ═══════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  if(e.key===' '){e.preventDefault();togglePlay();}
+  if(e.key==='ArrowRight') stepFwd();
+  if(e.key==='r'||e.key==='R') resetSim();
+});
+
+// ═══════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  document.querySelectorAll('canvas').forEach(cv=>{
+    const r=cv.parentElement.getBoundingClientRect();
+    cv.width=Math.max(r.width,100);
+    cv.height=Math.max(r.height,100);
+  });
+  resetSim();
+});
+</script>
+</body>
+</html>
