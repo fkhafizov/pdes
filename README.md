@@ -2,6 +2,7 @@
 
 2026.03.07
 
+* https://fkhafizov.github.io/pdes/
 * https://fkhafizov.github.io/pdes/pde_burgers_inviscid.html
 * https://fkhafizov.github.io/pdes/pde_transport.html
 * 
