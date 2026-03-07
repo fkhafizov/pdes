@@ -2,6 +2,11 @@
 
 2026.03.07
 
+* https://fkhafizov.github.io/pdes/pde_burgers_inviscid.html
+* https://fkhafizov.github.io/pdes/pde_transport.html
+* 
+* https://fkhafizov.github.io/animation/young_tableaux_comp_v9.html
+* 
 ```
 
 …or create a new repository on the command line
