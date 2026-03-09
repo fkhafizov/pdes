@@ -196,7 +196,9 @@ code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:#f1f8f1;p
 .katex .mopen, .katex .mclose, .katex .mord,
 .katex .mbin,  .katex .mrel,   .katex .mop,
 .katex .mpunct { color: inherit !important; }
-/* KaTeX assumes content-box sizing — global border-box reset breaks delimiter height calculations */
+/* KaTeX assumes content-box sizing — the global border-box reset in *{box-sizing:border-box}
+   above breaks KaTeX's delimiter height calculations. Override back to content-box here.
+   See: https://github.com/KaTeX/KaTeX/issues/2794 */
 .katex, .katex * { box-sizing: content-box !important; }
 </style>
 </head>
@@ -285,8 +287,8 @@ code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:#f1f8f1;p
   <div class="cfg">
     <h3>Animation</h3>
     <div class="param">
-      <label>Speed <span id="val-spd">1.0</span>×</label>
-      <input type="range" id="sl-spd" min="0.1" max="5" step="0.1" value="1" oninput="upSpd(this.value)">
+      <label>Speed <span id="val-spd">0.1</span>×</label>
+      <input type="range" id="sl-spd" min="0.1" max="5" step="0.1" value="0.1" oninput="upSpd(this.value)">
     </div>
     <div class="param">
       <label>Loop at T <span id="val-tmax">6.0</span></label>
@@ -321,12 +323,12 @@ code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:#f1f8f1;p
     </div>
 
     <!-- TAB: PROPAGATION -->
-    <div id="tab-prop" class="crow">
-      <div class="cwrap" style="flex:2.2">
+    <div id="tab-prop" style="display:flex;flex-direction:column;flex:1;gap:10px;min-height:0">
+      <div class="cwrap" style="flex:3">
         <canvas id="cv-main"></canvas>
         <div class="clabel">u(x, t) — Solution Profile</div>
       </div>
-      <div class="cwrap" style="flex:1">
+      <div class="cwrap" style="flex:1;min-height:80px">
         <canvas id="cv-err"></canvas>
         <div class="clabel">|u_exact − u_numerical|</div>
       </div>
@@ -352,7 +354,7 @@ code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:#f1f8f1;p
     <div id="tab-gal" class="crow" style="display:none">
       <div class="cwrap">
         <canvas id="cv-gal-tr"></canvas>
-        <div class="clabel">Transport · u_t + cu_x = 0</div>
+        <div class="clabel">Transport · u_t + cu_x = 0 (numerical + exact dashed)</div>
       </div>
       <div class="cwrap">
         <canvas id="cv-gal-di"></canvas>
@@ -399,14 +401,14 @@ const P = {
   amp:   1.0,
   N:     200,
   cfl:   0.90,
-  speed: 1.0,
+  speed: 0.1,
   tmax:  6.0,
 };
 
 let t=0, dx=0, dt=0;
 let u0=[], uNum=[], uExact=[];
 let sStates={};          // per-scheme arrays for cmp tab
-let uDiff=[], uBurg=[];  // gallery
+let uDiff=[], uBurg=[], uTrans=[];  // gallery
 let playing=false, animId=null, lastTs=null;
 let curTab='prop';
 let xtClicks=[];         // highlighted characteristics
@@ -437,6 +439,7 @@ function buildIC(){
         const c1=0.33,c2=0.67,s2=s*.65;
         return A*(Math.exp(-((x-c1)**2)/(2*s2*s2))+0.65*Math.exp(-((x-c2)**2)/(2*s2*s2)));
       }
+      // One-sided ramp pulse: exponential decay from left edge × half-sine arch
       case 'asymm': return Math.abs(x-xc)<s ? A*Math.exp(-(x-xc+s)/(s*0.6))*Math.sin(Math.PI*(x-xc+s)/(s*2)) : 0;
       default: return A*Math.exp(-((x-xc)**2)/(2*s*s));
     }
@@ -492,6 +495,9 @@ function stepDiffusion(u){
   return un;
 }
 
+// stepBurgers advances by dt/2 (one sub-step). Call TWICE per logical dt
+// so that Burgers stays in sync with Transport and Diffusion at the same t.
+// The half-step size preserves the Godunov CFL stability margin.
 function stepBurgers(u){
   const N=P.N, dtb=dt*0.5;
   const un=new Array(N);
@@ -517,7 +523,7 @@ function resetSim(){
   u0=buildIC();
   uExact=[...u0]; uNum=[...u0];
   sStates={}; SCHEMES.forEach(s=>sStates[s]=[...u0]);
-  uDiff=[...u0]; uBurg=[...u0];
+  uDiff=[...u0]; uBurg=[...u0]; uTrans=[...u0];
   updateStatus(); redraw();
 }
 
@@ -531,12 +537,16 @@ function advance(realMs){
       t=0;
       uNum=[...u0];
       SCHEMES.forEach(k=>sStates[k]=[...u0]);
-      uDiff=[...u0]; uBurg=[...u0];
+      uDiff=[...u0]; uBurg=[...u0]; uTrans=[...u0];
     }
     uNum=stepScheme(uNum,scheme);
     SCHEMES.forEach(k=>sStates[k]=stepScheme(sStates[k],k));
     uDiff=stepDiffusion(uDiff);
-    uBurg=stepBurgers(uBurg);
+    // Sub-cycle Burgers: two half-steps per dt to keep Burgers at the same
+    // physical time as Transport and Diffusion while preserving stability.
+    uBurg=stepBurgers(uBurg); uBurg=stepBurgers(uBurg);
+    // Gallery Transport: numerical solution with the currently selected scheme
+    uTrans=stepScheme(uTrans,scheme);
   }
   uExact=exactSolution();
 }
@@ -560,11 +570,12 @@ function stepFwd(){
   const scheme=document.getElementById('sch-sel').value;
   for(let s=0;s<30;s++){
     t+=dt;
-    if(t>P.tmax){t=0;uNum=[...u0];SCHEMES.forEach(k=>sStates[k]=[...u0]);uDiff=[...u0];uBurg=[...u0];}
+    if(t>P.tmax){t=0;uNum=[...u0];SCHEMES.forEach(k=>sStates[k]=[...u0]);uDiff=[...u0];uBurg=[...u0];uTrans=[...u0];}
     uNum=stepScheme(uNum,scheme);
     SCHEMES.forEach(k=>sStates[k]=stepScheme(sStates[k],k));
     uDiff=stepDiffusion(uDiff);
-    uBurg=stepBurgers(uBurg);
+    uBurg=stepBurgers(uBurg); uBurg=stepBurgers(uBurg);
+    uTrans=stepScheme(uTrans,scheme);
   }
   uExact=exactSolution();
   updateStatus(); redraw();
@@ -573,9 +584,17 @@ function stepFwd(){
 // ═══════════════════════════════════════════════
 //  DRAWING UTILITIES
 // ═══════════════════════════════════════════════
+// Cache canvas pixel dimensions; only resize (which clears the canvas and
+// forces a layout recalculation) when the container actually changed size.
+const _cvSizeCache = new Map();
 function fitCanvas(cv){
   const r=cv.parentElement.getBoundingClientRect();
-  cv.width=r.width; cv.height=r.height;
+  const w=Math.floor(r.width), h=Math.floor(r.height);
+  const cached=_cvSizeCache.get(cv);
+  if(!cached || cached.w!==w || cached.h!==h){
+    cv.width=w; cv.height=h;
+    _cvSizeCache.set(cv,{w,h});
+  }
 }
 
 const PAD={l:44,r:18,t:22,b:34};
@@ -629,8 +648,6 @@ function plotLine(ctx,arr,W,H,ymin,ymax,color,lw,dash,fill){
   ctx.setLineDash(dash||[]);
   ctx.beginPath();
   arr.forEach((v,i)=>{
-    const[px,py]=toCanvas(i*(P.N-1)/(arr.length-1)*(arr.length-1)/1,v,W,H,ymin,ymax);
-    // correct: just map index 0..N-1 to x 0..1
     const ppx=PAD.l+(i/(arr.length-1))*(W-PAD.l-PAD.r);
     const ppy=H-PAD.b-(v-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
     i===0?ctx.moveTo(ppx,ppy):ctx.lineTo(ppx,ppy);
@@ -822,6 +839,7 @@ function drawCmp(){
   const ymin=-0.4, ymax=P.amp*1.7;
   const rPad={l:PAD.l,r:130,t:PAD.t,b:PAD.b};
   const savedR=PAD.r; PAD.r=rPad.r;
+  try {
   bgFill(ctx,W,H);
   plotLine(ctx,u0,W,H,ymin,ymax,'#9e9e9e',1.2,[5,4],false);
   plotLine(ctx,uExact,W,H,ymin,ymax,'#1b2e1c',2.8,[],false);
@@ -830,7 +848,7 @@ function drawCmp(){
     const dash=s==='center'?[4,3]:[];
     plotLine(ctx,sStates[s],W,H,ymin,ymax,SCHEME_COLORS[s],1.9,dash,false);
   });
-  PAD.r=savedR;
+  } finally { PAD.r=savedR; }
 
   // custom axes accounting for rPad
   ctx.save();
@@ -875,9 +893,11 @@ function drawCmp(){
 
 function drawGal(){
   const items=[
-    {id:'cv-gal-tr',data:uExact,color:'#1565c0'},
-    {id:'cv-gal-di',data:uDiff, color:'#2e7d32'},
-    {id:'cv-gal-bu',data:uBurg, color:'#b71c1c'},
+    // Transport shows numerical solution (same scheme as Propagation tab) with
+    // the exact solution overlaid as a thin dashed line for comparison.
+    {id:'cv-gal-tr',data:uTrans,exact:uExact,color:'#1565c0'},
+    {id:'cv-gal-di',data:uDiff, exact:null,  color:'#2e7d32'},
+    {id:'cv-gal-bu',data:uBurg, exact:null,  color:'#b71c1c'},
   ];
   items.forEach(it=>{
     const cv=document.getElementById(it.id);
@@ -888,6 +908,8 @@ function drawGal(){
     plotLine(ctx,u0,W,H,ymin,ymax,'#9e9e9e',1.2,[5,4],false);
     const sf=document.getElementById('tog-fill').checked;
     plotLine(ctx,it.data,W,H,ymin,ymax,it.color,2.5,[],sf);
+    // For Transport: overlay exact solution so numerical error is visible
+    if(it.exact) plotLine(ctx,it.exact,W,H,ymin,ymax,'#90caf9',1.2,[4,3],false);
     drawAxes(ctx,W,H,ymin,ymax,'u');
     ctx.fillStyle=it.color; ctx.font='bold 11px JetBrains Mono,monospace';
     ctx.fillText(`t = ${t.toFixed(3)}`,W-PAD.r-80,PAD.t+13);
@@ -920,7 +942,7 @@ function updateStatus(){
   document.getElementById('sb-cfl').textContent=`CFL ν = ${cflV.toFixed(3)}`;
   const badge=document.getElementById('cfl-badge');
   badge.textContent=`ν = ${cflV.toFixed(2)}`;
-  badge.className='cfl-badge '+(cflV<=1?'cfl-ok':cflV<=1.2?'cfl-warn':'cfl-bad');
+  badge.className='cfl-badge '+(cflV<=1?'cfl-ok':'cfl-bad');
 }
 
 // ═══════════════════════════════════════════════
@@ -937,7 +959,9 @@ function upN(v){P.N=parseInt(v);document.getElementById('val-N').textContent=P.N
 function upCFL(v){
   P.cfl=parseFloat(v);
   document.getElementById('val-cfl').textContent=P.cfl.toFixed(2);
-  computeGrid(); updateStatus(); redraw();
+  // Recompute dt and reset numerical state — continuing a run with a new dt
+  // from mid-evolution produces inconsistent results.
+  resetSim();
 }
 function upSpd(v){P.speed=parseFloat(v);document.getElementById('val-spd').textContent=P.speed.toFixed(1);}
 function upTmax(v){P.tmax=parseFloat(v);document.getElementById('val-tmax').textContent=P.tmax.toFixed(1);}
