@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heat Equation — Live Solver v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<style>
+:root {
+  --bg: #d6eaf8;
+  --bg2: #e8f4fd;
+  --panel: #ffffff;
+  --panel2: #f0f8ff;
+  --border: #a8cce4;
+  --border2: #c5dff0;
+  --sim: #0077b6;
+  --ana: #e05a00;
+  --mode: #7b2fbe;
+  --text: #1a3a4f;
+  --dim: #6a8fa8;
+  --accent: #0077b6;
+  --shadow: rgba(0,80,140,0.14);
+  --cn: #0a7c4e;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 40% at 25% 0%, rgba(120,195,255,0.28), transparent),
+    radial-gradient(ellipse 50% 35% at 80% 100%, rgba(0,119,182,0.1), transparent);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 18px 14px 40px;
+}
+
+/* ── HEADER ──────────────────────────────────────────────── */
+header {
+  width:100%; max-width:1340px;
+  display:flex; justify-content:space-between; align-items:center;
+  border-bottom: 2px solid var(--border); padding-bottom:14px; margin-bottom:16px;
+}
+h1 { font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:800; color:#003f6b; letter-spacing:-0.02em; }
+h1 em { font-style:normal; color:var(--ana); }
+.sub { font-size:0.58rem; color:var(--dim); letter-spacing:0.15em; text-transform:uppercase; margin-top:3px; }
+.hdr-btns { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+
+/* 3-D Green Button */
+.btn3d {
+  font-family:'Syne',sans-serif; font-weight:700; font-size:0.78rem;
+  letter-spacing:0.07em; color:#fff;
+  padding:9px 22px; border-radius:7px; border:none; cursor:pointer;
+  background: linear-gradient(180deg,#52e06a 0%,#1cc940 42%,#14a032 100%);
+  box-shadow: 0 1px 0 #0c6b22, 0 5px 0 #095519, 0 6px 8px rgba(0,0,0,0.22),
+              inset 0 1px 0 rgba(255,255,255,0.45);
+  text-shadow: 0 1px 1px rgba(0,60,0,0.35);
+  position:relative; top:0;
+  transition: top .08s, box-shadow .08s, background .12s;
+}
+.btn3d:hover { background:linear-gradient(180deg,#62f07a 0%,#22dc48 42%,#17b038 100%); }
+.btn3d:active {
+  top:5px;
+  box-shadow: 0 1px 0 #095519, 0 0 0 #095519, 0 1px 4px rgba(0,0,0,0.18),
+              inset 0 1px 0 rgba(255,255,255,0.2);
+}
+/* Export button (blue) */
+.btn3d.blue {
+  background: linear-gradient(180deg,#3ab0ff 0%,#0077b6 42%,#005a8e 100%);
+  box-shadow: 0 1px 0 #003f6b, 0 5px 0 #003060, 0 6px 8px rgba(0,0,0,0.22),
+              inset 0 1px 0 rgba(255,255,255,0.35);
+  text-shadow: 0 1px 1px rgba(0,30,80,0.35);
+}
+.btn3d.blue:hover { background:linear-gradient(180deg,#55c0ff 0%,#0088cc 42%,#0066a0 100%); }
+.btn3d.blue:active {
+  top:5px;
+  box-shadow: 0 1px 0 #003060, 0 0 0 #003060, 0 1px 4px rgba(0,0,0,0.18),
+              inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+/* ── LAYOUT ──────────────────────────────────────────────── */
+.grid {
+  width:100%; max-width:1340px;
+  display:grid;
+  grid-template-columns: 210px 1fr 305px;
+  gap:13px; align-items:start;
+}
+@media(max-width:900px){ .grid{grid-template-columns:1fr;} }
+
+/* ── PANEL ───────────────────────────────────────────────── */
+.panel {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:8px; padding:15px;
+  box-shadow:0 2px 14px var(--shadow);
+}
+.ptitle {
+  font-size:0.56rem; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--dim); border-bottom:1px solid var(--border2); padding-bottom:7px; margin-bottom:13px;
+}
+.ptitlerow {
+  display:flex; justify-content:space-between; align-items:center;
+  border-bottom:1px solid var(--border2); padding-bottom:7px; margin-bottom:13px;
+}
+.ptitlerow .ptitle { border:none; padding:0; margin:0; }
+
+/* Sliders & controls */
+.prow { display:flex; flex-direction:column; gap:4px; margin-bottom:13px; }
+.plabel { display:flex; justify-content:space-between; font-size:0.62rem; }
+.plabel b { color:var(--accent); }
+input[type=range] {
+  width:100%; -webkit-appearance:none; height:4px;
+  background:var(--border); border-radius:2px; outline:none; cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+  background:var(--accent); box-shadow:0 0 0 3px rgba(0,119,182,0.18); cursor:pointer;
+}
+select {
+  width:100%; background:var(--bg2); border:1px solid var(--border);
+  color:var(--text); font-family:'Space Mono',monospace; font-size:0.62rem;
+  padding:6px 8px; border-radius:4px; cursor:pointer; outline:none; margin-top:4px;
+}
+.brow { display:flex; gap:8px; margin-top:4px; }
+.cbtn {
+  flex:1; background:linear-gradient(180deg,#e8f4fd,#cce4f6);
+  border:1px solid var(--border); color:var(--text);
+  font-family:'Space Mono',monospace; font-size:0.6rem;
+  letter-spacing:0.05em; text-transform:uppercase;
+  padding:8px 4px; border-radius:4px; cursor:pointer;
+  box-shadow:0 2px 0 var(--border),0 3px 5px rgba(0,0,0,0.07);
+  position:relative; top:0; transition:top .07s,box-shadow .07s;
+}
+.cbtn.pri {
+  background:linear-gradient(180deg,#3ab0ff,#0077b6);
+  border-color:#005a8e; color:#fff;
+  box-shadow:0 2px 0 #004a78,0 3px 5px rgba(0,0,0,0.13);
+}
+.cbtn:active { top:2px; box-shadow:0 0 0 var(--border); }
+.cbtn.pri:active { box-shadow:0 0 0 #004a78; }
+
+/* Small toggle button */
+.tog {
+  font-family:'Space Mono',monospace; font-size:0.5rem;
+  letter-spacing:0.06em; text-transform:uppercase;
+  padding:3px 8px; border-radius:3px; border:1px solid var(--border);
+  background:var(--bg2); color:var(--dim); cursor:pointer;
+  transition:background .12s, color .12s;
+}
+.tog.on { background:#1a3a4f; color:#fff; border-color:#1a3a4f; }
+
+/* CN scheme badge */
+.scheme-badge {
+  display:inline-block; font-size:0.5rem; letter-spacing:0.08em; text-transform:uppercase;
+  background:#e6f9f2; border:1px solid #7ecfaa; border-radius:3px;
+  padding:2px 7px; color:var(--cn); margin-left:6px; vertical-align:middle;
+}
+.scheme-badge.ftcs { background:#e8f4fd; border-color:var(--border2); color:var(--dim); }
+
+/* Stats */
+.sgrid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.sbox { background:var(--bg2); border:1px solid var(--border2); border-radius:4px; padding:7px; }
+.slbl { font-size:0.5rem; color:var(--dim); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:3px; }
+.sval { font-size:0.78rem; font-weight:700; color:var(--accent); }
+.minfo { font-size:0.57rem; color:var(--dim); margin-top:9px; line-height:1.9; }
+.minfo strong { color:var(--mode); }
+
+/* ── MAIN CHART ──────────────────────────────────────────── */
+.chartpanel {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:8px; padding:16px; box-shadow:0 2px 14px var(--shadow);
+}
+canvas#main { display:block; width:100%; border-radius:4px; }
+canvas#hm {
+  display:block; width:100%; height:42px; border-radius:4px;
+  margin-top:9px; image-rendering:pixelated; border:1px solid var(--border2);
+}
+.legend { display:flex; gap:16px; margin-top:9px; font-size:0.59rem; flex-wrap:wrap; align-items:center; }
+.li { display:flex; align-items:center; gap:7px; }
+.ll { width:22px; height:3px; border-radius:2px; }
+.timebar { margin-top:9px; font-size:0.59rem; color:var(--dim); }
+.timetrack { width:100%; height:5px; background:var(--border2); border-radius:3px; margin-top:5px; overflow:hidden; }
+.timefill { height:100%; background:linear-gradient(90deg,var(--sim),var(--ana)); border-radius:3px; transition:width .1s; }
+
+/* ── RIGHT PANEL ─────────────────────────────────────────── */
+.rightcol { display:flex; flex-direction:column; gap:12px; }
+.demowrap {
+  width:100%; aspect-ratio:4/3; background:#001520;
+  border-radius:6px; overflow:hidden; border:1px solid var(--border); position:relative;
+}
+canvas#demo { display:block; width:100%; height:100%; }
+.demolbl { font-size:0.57rem; color:var(--dim); text-align:center; margin-bottom:7px; letter-spacing:0.07em; }
+
+/* Error chart */
+canvas#errc { display:block; width:100%; border-radius:4px; }
+
+/* ── MODAL ───────────────────────────────────────────────── */
+.overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,25,55,0.52); backdrop-filter:blur(5px);
+  z-index:200; justify-content:center; align-items:center;
+}
+.overlay.on { display:flex; }
+.mbox {
+  background:#fff; border:1px solid var(--border); border-radius:12px;
+  max-width:680px; width:93%; max-height:85vh; overflow-y:auto;
+  padding:30px 32px; box-shadow:0 24px 70px rgba(0,50,120,0.22);
+  position:relative;
+}
+.mbox h2 { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:800; color:#003f6b; margin-bottom:5px; }
+.msub { font-size:0.6rem; color:var(--dim); letter-spacing:0.12em; text-transform:uppercase;
+  margin-bottom:18px; padding-bottom:11px; border-bottom:1px solid var(--border2); }
+.mbox p { font-size:0.77rem; line-height:1.82; color:#26465e; margin-bottom:11px; }
+.mbox h3 { font-family:'Syne',sans-serif; font-size:0.84rem; font-weight:700; color:#003f6b; margin:17px 0 7px; }
+.mbox ul { padding-left:17px; margin-bottom:11px; }
+.mbox li { font-size:0.74rem; line-height:1.82; color:#26465e; margin-bottom:4px; }
+.mbox a { color:#0077b6; text-decoration:none; border-bottom:1px solid #a8cce4; }
+.mbox a:hover { color:var(--ana); border-color:var(--ana); }
+.meq {
+  background:#f0f8ff; border:1px solid var(--border2); border-radius:6px;
+  padding:13px 20px; margin:9px 0 13px; overflow-x:auto;
+  text-align:center; line-height:2.2;
+}
+.meq .katex-display { margin:0; }
+.mcx {
+  position:absolute; top:14px; right:16px; background:none;
+  border:1px solid var(--border); border-radius:50%; width:30px; height:30px;
+  cursor:pointer; font-size:1rem; color:var(--dim);
+  display:flex; align-items:center; justify-content:center;
+}
+.mcx:hover { background:var(--bg2); color:var(--text); }
+.rtag {
+  display:inline-block; font-size:0.52rem; letter-spacing:0.09em;
+  text-transform:uppercase; background:#e8f4fd; border:1px solid var(--border2);
+  border-radius:3px; padding:1px 6px; color:var(--dim); margin-right:4px;
+}
+.kbtag {
+  display:inline-block; font-size:0.55rem; background:#1a3a4f; color:#e8f4fd;
+  border-radius:3px; padding:1px 6px; font-family:'Space Mono',monospace;
+  letter-spacing:0.05em; margin:0 2px;
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────── -->
+<header>
+  <div>
+    <h1>Heat Equation <em>//</em> Live Solver</h1>
+    <div class="sub">FTCS &amp; Crank-Nicolson &nbsp;·&nbsp; Fourier Analytical &nbsp;·&nbsp; Real-Time</div>
+  </div>
+  <div class="hdr-btns">
+    <button class="btn3d blue" id="expbtn">📷&nbsp;Export PNG</button>
+    <button class="btn3d" onclick="openM('help')">❓&nbsp;HELP</button>
+    <button class="btn3d" onclick="openM('theory')">📐&nbsp;THEORY</button>
+  </div>
+</header>
+
+<!-- ── GRID ───────────────────────────────────────────────────── -->
+<div class="grid">
+
+  <!-- LEFT: Controls + Stats -->
+  <div class="panel">
+    <div class="ptitle">// Parameters</div>
+
+    <div class="prow">
+      <div class="plabel"><span>Diffusivity α</span><b id="av">0.50</b></div>
+      <input type="range" id="as" min="0.05" max="1.5" step="0.05" value="0.5">
+    </div>
+    <div class="prow">
+      <div class="plabel"><span>Fourier Modes N</span><b id="mv">20</b></div>
+      <input type="range" id="ms" min="1" max="60" step="1" value="20">
+    </div>
+    <div class="prow">
+      <div class="plabel"><span>Speed</span><b id="sv">1×</b></div>
+      <input type="range" id="ss" min="0.5" max="8" step="0.5" value="1">
+    </div>
+    <div class="prow">
+      <div class="plabel"><span>Initial Condition</span></div>
+      <select id="ic">
+        <option value="sine">Single Sine Wave</option>
+        <option value="step">Step Function</option>
+        <option value="triangle">Triangle Wave</option>
+        <option value="gaussian">Gaussian Pulse</option>
+        <option value="double">Double Peak</option>
+      </select>
+    </div>
+    <div class="prow">
+      <div class="plabel"><span>Solver</span></div>
+      <select id="solver">
+        <option value="ftcs">FTCS (explicit, r ≤ 0.5)</option>
+        <option value="cn">Crank-Nicolson (implicit, unconditionally stable)</option>
+      </select>
+    </div>
+    <div class="brow">
+      <button class="cbtn pri" id="pb">▶ Play</button>
+      <button class="cbtn" id="rb">↺ Reset</button>
+    </div>
+
+    <div style="margin-top:18px">
+      <div class="ptitle">// Live Stats</div>
+      <div class="sgrid">
+        <div class="sbox"><div class="slbl">Max Error</div><div class="sval" id="se">—</div></div>
+        <div class="sbox"><div class="slbl">L² Norm</div><div class="sval" id="sl">—</div></div>
+        <div class="sbox"><div class="slbl">Max u(x,t)</div><div class="sval" id="sm">—</div></div>
+        <div class="sbox"><div class="slbl">Energy</div><div class="sval" id="sen">—</div></div>
+      </div>
+      <div class="minfo">
+        Decay: <strong>e<sup>−α(nπ/L)²t</sup></strong><br>
+        n=1 half-life: <span id="hl">—</span><br>
+        n=2 decays 4× faster
+      </div>
+    </div>
+    <div style="margin-top:10px; font-size:0.52rem; color:var(--dim); line-height:1.8; border-top:1px solid var(--border2); padding-top:8px;">
+      <span class="kbtag">Space</span> Play/Pause &nbsp;
+      <span class="kbtag">R</span> Reset
+    </div>
+  </div>
+
+  <!-- MIDDLE: Main plot -->
+  <div class="chartpanel">
+    <canvas id="main"></canvas>
+    <canvas id="hm"></canvas>
+    <div class="legend">
+      <div class="li"><div class="ll" style="background:var(--sim)"></div><span id="leg-num">Numerical FTCS</span></div>
+      <div class="li"><div class="ll" style="background:var(--ana)"></div><span>Analytical (Fourier)</span></div>
+      <div class="li"><div class="ll" style="border-top:2px dashed var(--mode);background:none;height:0;width:22px"></div><span>Mode n=1</span></div>
+    </div>
+    <div class="timebar">
+      <span id="tl">t = 0.0000</span> / t_max = 0.5000
+      <div class="timetrack"><div class="timefill" id="tf" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: 2D demo + error chart -->
+  <div class="rightcol">
+    <div class="panel">
+      <div class="ptitle">// 2D Heat Diffusion Demo</div>
+      <div class="demolbl">u(x,y,t) — same PDE, same α, square domain</div>
+      <div class="demowrap"><canvas id="demo"></canvas></div>
+      <div style="font-size:0.57rem;color:var(--dim);line-height:1.85;margin-top:9px">
+        Colour = temperature. Hot spots spread outward.<br>
+        Coarse features persist; fine features vanish first.<br>
+        <em>Responds to α slider — try high values!</em>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ptitlerow">
+        <div class="ptitle">// L² Error vs Time</div>
+        <button class="tog" id="logtog">Log</button>
+      </div>
+      <canvas id="errc"></canvas>
+      <div style="font-size:0.56rem;color:var(--dim);margin-top:6px">
+        Difference between numerical solution and analytical. Log scale reveals exponential decay rate.
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.grid -->
+
+<!-- ── HELP MODAL ─────────────────────────────────────────────── -->
+<div class="overlay" id="m-help">
+  <div class="mbox">
+    <button class="mcx" onclick="closeM('help')">✕</button>
+    <h2>How to Use This App</h2>
+    <div class="msub">Quick Reference Guide</div>
+
+    <h3>The Three Curves</h3>
+    <ul>
+      <li><strong style="color:#0077b6">Blue — Numerical (FTCS or C-N):</strong> Finite-difference simulation stepped forward each frame.</li>
+      <li><strong style="color:#e05a00">Orange — Analytical (Fourier):</strong> Closed-form solution evaluated exactly from the Fourier sine series at current t.</li>
+      <li><strong style="color:#7b2fbe">Purple dashed — Mode n=1:</strong> The fundamental mode alone. It decays slowest — watch it outlive all higher modes.</li>
+    </ul>
+
+    <h3>Sliders &amp; Selectors</h3>
+    <ul>
+      <li><strong>α (Diffusivity):</strong> Higher α → faster diffusion → all modes decay faster. Also updates the 2D demo. Watch the half-life readout.</li>
+      <li><strong>Fourier Modes N:</strong> Number of series terms. Try N = 3 with Step to see Gibbs-phenomenon ringing (annotated on the chart).</li>
+      <li><strong>Speed:</strong> Wall-clock multiplier. Physics is unchanged.</li>
+      <li><strong>Initial Condition:</strong> Sets u(x,0) = f(x). Step/Triangle show Gibbs artefacts; Gaussian gives cleanest demo.</li>
+      <li><strong>Solver:</strong> Switch between FTCS (explicit, CFL-limited) and Crank-Nicolson (implicit, unconditionally stable). C-N uses a 4× larger timestep to demonstrate stability advantage.</li>
+    </ul>
+
+    <h3>Stats Panel</h3>
+    <ul>
+      <li><strong>Max Error:</strong> max |u_num − u_exact| over all grid points.</li>
+      <li><strong>L² Norm:</strong> RMS error — global measure, less sensitive to outliers.</li>
+      <li><strong>Energy:</strong> (1/N)Σu² — Lyapunov function; strictly decreasing confirms dissipation.</li>
+    </ul>
+
+    <h3>Right Panel</h3>
+    <ul>
+      <li><strong>2D Demo:</strong> Same PDE on a 64×64 grid, coupled to the α slider. Compare diffusion speed vs 1D.</li>
+      <li><strong>Error Chart:</strong> Accumulated L² error over time. Toggle <em>Log</em> to see the expected straight-line exponential decay.</li>
+    </ul>
+
+    <h3>Keyboard Shortcuts</h3>
+    <ul>
+      <li><span class="kbtag">Space</span> Play / Pause</li>
+      <li><span class="kbtag">R</span> Reset</li>
+      <li><span class="kbtag">Esc</span> Close modals</li>
+    </ul>
+
+    <h3>Export</h3>
+    <p>Click <strong>Export PNG</strong> in the header to download the current main plot as a PNG image.</p>
+  </div>
+</div>
+
+<!-- ── THEORY MODAL ───────────────────────────────────────────── -->
+<div class="overlay" id="m-theory">
+  <div class="mbox">
+    <button class="mcx" onclick="closeM('theory')">✕</button>
+    <h2>Theoretical Background</h2>
+    <div class="msub">The 1D Heat Equation — Derivation, Exact Solution &amp; Numerical Methods</div>
+
+    <h3>1. The PDE</h3>
+    <p>The 1D heat (diffusion) equation governs temperature \(u(x,t)\) along a rod of length \(L\) with thermal diffusivity \(\alpha > 0\):</p>
+    <div class="meq">\[\frac{\partial u}{\partial t} = \alpha\,\frac{\partial^2 u}{\partial x^2}, \qquad x \in [0,L],\; t > 0\]</div>
+    <p>Physically: the local rate of temperature change equals the Laplacian (curvature) of \(u\) scaled by \(\alpha\). Peaks lose heat; valleys gain it — the equation is a smoothing operator.</p>
+
+    <h3>2. Boundary &amp; Initial Conditions</h3>
+    <div class="meq">\[u(0,t) = 0,\quad u(L,t) = 0\quad\text{(Dirichlet — rod ends held at zero)}\]
+    \[u(x,0) = f(x)\quad\text{(arbitrary initial profile)}\]</div>
+
+    <h3>3. Separation of Variables</h3>
+    <p>Writing \(u(x,t) = X(x)\,T(t)\) and substituting yields the separated equations with constant \(-\lambda\):</p>
+    <div class="meq">\[\frac{T'(t)}{\alpha\,T(t)} = \frac{X''(x)}{X(x)} = -\lambda\]</div>
+    <p>The spatial ODE \(X'' + \lambda X = 0\) with homogeneous BCs yields eigenvalues \(\lambda_n = (n\pi/L)^2\) and eigenfunctions \(X_n(x) = \sin(n\pi x/L)\) for \(n = 1,2,3,\ldots\) The temporal factor \(T_n(t) = e^{-\alpha(n\pi/L)^2 t}\); higher modes decay exponentially faster.</p>
+
+    <h3>4. Exact Analytical Solution</h3>
+    <div class="meq">\[u(x,t) = \sum_{n=1}^{\infty} B_n \sin\!\left(\tfrac{n\pi x}{L}\right) e^{-\alpha(n\pi/L)^2\,t}\]
+    \[B_n = \frac{2}{L}\int_0^L f(x)\sin\!\left(\tfrac{n\pi x}{L}\right)dx\quad\text{(Fourier sine coefficients)}\]</div>
+    <p>This app computes \(B_n\) via a trapezoidal quadrature rule \(\bigl(B_n \approx \frac{2\,\Delta x}{L}\sum_i f(x_i)\sin(n\pi x_i/L)\bigr)\), which is exact for the eigenfunction basis on the grid.</p>
+
+    <h3>5a. FTCS Numerical Scheme (explicit)</h3>
+    <p>Discretise with \(\Delta x = L/(N-1)\) and timestep \(\Delta t\). The Forward-Time Centered-Space update is:</p>
+    <div class="meq">\[u_i^{n+1} = u_i^n + r\bigl(u_{i+1}^n - 2u_i^n + u_{i-1}^n\bigr), \qquad r = \frac{\alpha\,\Delta t}{(\Delta x)^2}\]</div>
+    <p>Stability requires the CFL condition \(r \leq 0.5\). This app enforces \(r = 0.49\) automatically, giving first-order accuracy in time, second-order in space.</p>
+
+    <h3>5b. Crank-Nicolson Scheme (implicit)</h3>
+    <p>Averaging the spatial operator at time levels \(n\) and \(n+1\) gives the unconditionally stable implicit scheme:</p>
+    <div class="meq">\[-\tfrac{r}{2}\,u_{i-1}^{n+1} + (1+r)\,u_i^{n+1} - \tfrac{r}{2}\,u_{i+1}^{n+1} = \tfrac{r}{2}\,u_{i-1}^n + (1-r)\,u_i^n + \tfrac{r}{2}\,u_{i+1}^n\]</div>
+    <p>Each step solves a tridiagonal linear system via the Thomas algorithm — \(O(N)\) cost. C-N is second-order in <em>both</em> time and space and remains stable for any \(r\), allowing timesteps 4× larger than FTCS here. The stability region covers the entire left half-plane, unlike FTCS which has a disk of radius 1.</p>
+
+    <h3>6. Key Mathematical Properties</h3>
+    <ul>
+      <li><strong>Infinite smoothing:</strong> \(u(\cdot,t) \in C^\infty\) for any \(t > 0\), even if \(f\) is discontinuous.</li>
+      <li><strong>Maximum principle:</strong> \(\min f \leq u(x,t) \leq \max f\) for all \((x,t)\). No new extrema are created.</li>
+      <li><strong>Energy dissipation:</strong> \(\tfrac{d}{dt}\|u\|^2 = -2\alpha\|\nabla u\|^2 \leq 0\) — energy is monotonically lost.</li>
+      <li><strong>Mode decay ordering:</strong> The \(n=1\) half-life is \(T_{1/2} = L^2\ln 2\,/\,(\alpha\pi^2)\); every higher mode decays at least \(4\times\) faster.</li>
+      <li><strong>Self-adjointness:</strong> The operator \(-\alpha\,\partial^2/\partial x^2\) is self-adjoint on \(L^2[0,L]\) with Dirichlet BCs, guaranteeing a complete real orthonormal eigenfunction basis.</li>
+      <li><strong>Gibbs phenomenon:</strong> Truncating the Fourier series at \(N\) modes near a jump discontinuity causes ~8.9% overshoot/undershoot that does not vanish as \(N \to \infty\).</li>
+    </ul>
+
+    <h3>7. References &amp; Further Reading</h3>
+    <ul>
+      <li><span class="rtag">Video</span> 3Blue1Brown — <a href="https://www.youtube.com/watch?v=ly4S0oi3Yz8" target="_blank">But what is a partial differential equation?</a> (YouTube, 2019).</li>
+      <li><span class="rtag">Video</span> Dr. Chris Tisdell — <a href="https://www.youtube.com/watch?v=9C8RMjl0rj0" target="_blank">Solving the Heat Equation via Separation of Variables</a> (YouTube).</li>
+      <li><span class="rtag">Lecture Notes</span> MIT OCW 18.303 — <a href="https://ocw.mit.edu/courses/18-303-linear-partial-differential-equations-analysis-and-numerics-fall-2014/" target="_blank">Linear PDEs: Analysis and Numerics</a>.</li>
+      <li><span class="rtag">Textbook</span> Strauss, W. A. — <a href="https://www.wiley.com/en-us/Partial+Differential+Equations%3A+An+Introduction%2C+2nd+Edition-p-9780470054567" target="_blank">Partial Differential Equations: An Introduction</a> (Wiley, 2nd ed.).</li>
+      <li><span class="rtag">Reference</span> Paul Dawkins — <a href="https://tutorial.math.lamar.edu/Classes/DE/SolvingHeatEquation.aspx" target="_blank">Solving the Heat Equation (Lamar University)</a>.</li>
+      <li><span class="rtag">Paper</span> Crank &amp; Nicolson (1947) — <a href="https://doi.org/10.1017/S0305004100023197" target="_blank">A practical method for numerical evaluation of solutions of PDEs</a>. Classic paper introducing the C-N scheme.</li>
+      <li><span class="rtag">Numerical</span> LeVeque, R. J. — <a href="https://epubs.siam.org/doi/book/10.1137/1.9780898717839" target="_blank">Finite Difference Methods for ODEs and PDEs</a> (SIAM, 2007).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════
+function openM(id){ document.getElementById('m-'+id).classList.add('on'); }
+function closeM(id){ document.getElementById('m-'+id).classList.remove('on'); }
+document.querySelectorAll('.overlay').forEach(el=>{
+  el.addEventListener('click',e=>{ if(e.target===el) el.classList.remove('on'); });
+});
+
+// ═══════════════════════════════════════════════
+// PHYSICS CONSTANTS
+// ═══════════════════════════════════════════════
+const L=1, NG=200, dx=L/(NG-1), TMAX=0.5;
+const xa=Float64Array.from({length:NG},(_,i)=>i*dx);
+let alpha=0.5, NM=20, spd=1, t=0;
+let playing=false, animId=null, lastTs=null;
+let usim=new Float64Array(NG), uinit, Bn, ict='sine', solverType='ftcs';
+let eHist=[], logScale=false;
+
+// ═══════════════════════════════════════════════
+// INITIAL CONDITIONS
+// ═══════════════════════════════════════════════
+function getIC(tp){
+  const u=new Float64Array(NG);
+  for(let i=0;i<NG;i++){
+    const x=xa[i];
+    if(tp==='sine')
+      u[i]=Math.sin(Math.PI*x/L);
+    // FIX: step uses interior window [0.15, 0.75] to avoid left-boundary zeroing conflict
+    else if(tp==='step')
+      u[i]=(x>=0.15 && x<=0.75)?1:0;
+    else if(tp==='triangle')
+      u[i]=x<L/2?2*x/L:2*(L-x)/L;
+    else if(tp==='gaussian')
+      u[i]=Math.exp(-0.5*((x-L/2)/0.08)**2);
+    else if(tp==='double'){
+      u[i]=Math.sin(Math.PI*x/L)+0.5*Math.sin(3*Math.PI*x/L);
+      if(u[i]<0)u[i]=0;
+    }
+  }
+  u[0]=u[NG-1]=0;
+  return u;
+}
+
+// ═══════════════════════════════════════════════
+// FOURIER COEFFICIENTS
+// FIX: use trapezoidal quadrature: B_n ≈ (2·Δx/L)·Σ f(x_i)sin(nπx_i/L)
+// This equals 2/(NG-1)·Σ, not 2/NG·Σ (was ~0.5% systematic error before)
+// ═══════════════════════════════════════════════
+function coeffs(u,n){
+  const B=new Float64Array(n+1);
+  for(let k=1;k<=n;k++){
+    // Trapezoidal rule: endpoints weighted by 0.5
+    // Since sin(k·π·0/L)=sin(k·π)=0, endpoint contributions vanish anyway
+    let s=0;
+    for(let i=0;i<NG;i++) s+=u[i]*Math.sin(k*Math.PI*xa[i]/L);
+    B[k]=(2*dx/L)*s;  // corrected: was (2/NG)*s
+  }
+  return B;
+}
+
+function analytical(B,tn,n){
+  const u=new Float64Array(NG);
+  for(let k=1;k<=n;k++){
+    const d=B[k]*Math.exp(-alpha*(k*Math.PI/L)**2*tn);
+    if(Math.abs(d)<1e-15) continue;
+    for(let i=0;i<NG;i++) u[i]+=d*Math.sin(k*Math.PI*xa[i]/L);
+  }
+  return u;
+}
+
+function mode1(B,tn){
+  const d=B[1]*Math.exp(-alpha*(Math.PI/L)**2*tn);
+  return Float64Array.from(xa,x=>d*Math.sin(Math.PI*x/L));
+}
+
+// ═══════════════════════════════════════════════
+// SOLVERS
+// ═══════════════════════════════════════════════
+
+// FTCS explicit (r = 0.49, CFL-stable)
+function ftcs(u){
+  const sdt=0.49*dx*dx/alpha;
+  const dt=Math.min(sdt,TMAX-t);
+  const r=alpha*dt/(dx*dx);
+  const u2=u.slice();
+  for(let i=1;i<NG-1;i++) u2[i]=u[i]+r*(u[i+1]-2*u[i]+u[i-1]);
+  u2[0]=u2[NG-1]=0;
+  return{u:u2,dt};
+}
+
+// Crank-Nicolson implicit (unconditionally stable, 2nd-order in time)
+// Solves: -r/2·u[i-1]^{n+1} + (1+r)·u[i]^{n+1} - r/2·u[i+1]^{n+1} = RHS_i
+// via Thomas algorithm (O(N) tridiagonal solve)
+function cn(u){
+  const sdt=2.0*dx*dx/alpha;        // 4× larger than FTCS timestep
+  const dt=Math.min(sdt,TMAX-t);
+  const r=alpha*dt/(dx*dx);
+  const M=NG-2;                      // number of interior unknowns
+
+  // Build RHS (explicit side)
+  const rhs=new Float64Array(M);
+  for(let j=0;j<M;j++){
+    const i=j+1;
+    rhs[j]=u[i]+(r/2)*(u[i+1]-2*u[i]+u[i-1]);
+    // Boundary corrections are zero since u[0]=u[NG-1]=0
+  }
+
+  // Thomas algorithm: a=-r/2, b=1+r, c=-r/2
+  const a=-r/2, b=1+r, c=-r/2;
+  const cp=new Float64Array(M);
+  const dp=new Float64Array(M);
+  cp[0]=c/b;
+  dp[0]=rhs[0]/b;
+  for(let j=1;j<M;j++){
+    const denom=b-a*cp[j-1];
+    cp[j]=c/denom;
+    dp[j]=(rhs[j]-a*dp[j-1])/denom;
+  }
+
+  // Back substitution
+  const x=new Float64Array(M);
+  x[M-1]=dp[M-1];
+  for(let j=M-2;j>=0;j--) x[j]=dp[j]-cp[j]*x[j+1];
+
+  const u2=new Float64Array(NG);
+  for(let j=0;j<M;j++) u2[j+1]=x[j];
+  // u2[0]=u2[NG-1]=0 already
+  return{u:u2,dt};
+}
+
+function initSim(){
+  t=0; eHist=[];
+  uinit=getIC(ict); Bn=coeffs(uinit,NM); usim=uinit.slice();
+}
+
+// ═══════════════════════════════════════════════
+// MAIN CHART
+// ═══════════════════════════════════════════════
+const mc=document.getElementById('main');
+const mctx=mc.getContext('2d');
+const P={l:50,r:14,t:14,b:36};
+
+function resizeMain(){
+  const w=mc.parentElement.clientWidth-32;
+  mc.width=w; mc.height=Math.round(w*0.47);
+  document.getElementById('hm').width=w;
+}
+
+function drawGrid(W,H){
+  mctx.strokeStyle='#c5dff0'; mctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const y=P.t+(i/5)*(H-P.t-P.b);
+    mctx.beginPath(); mctx.moveTo(P.l,y); mctx.lineTo(W-P.r,y); mctx.stroke();
+    mctx.fillStyle='#6a8fa8'; mctx.font='9px Space Mono,monospace';
+    mctx.textAlign='right'; mctx.fillText((1-i/5).toFixed(1),P.l-5,y+3);
+  }
+  for(let i=0;i<=5;i++){
+    const x=P.l+(i/5)*(W-P.l-P.r);
+    mctx.beginPath(); mctx.moveTo(x,P.t); mctx.lineTo(x,H-P.b); mctx.stroke();
+    mctx.fillStyle='#6a8fa8'; mctx.font='9px Space Mono,monospace';
+    mctx.textAlign='center'; mctx.fillText((i/5).toFixed(1),x,H-P.b+13);
+  }
+  mctx.fillStyle='#6a8fa8'; mctx.font='9px Space Mono,monospace';
+  mctx.textAlign='center'; mctx.fillText('x / L',P.l+(W-P.l-P.r)/2,H-2);
+  mctx.save(); mctx.translate(11,P.t+(H-P.t-P.b)/2);
+  mctx.rotate(-Math.PI/2); mctx.fillText('u(x,t)',0,0); mctx.restore();
+}
+
+function drawCurve(u,col,lw,dashed,W,H){
+  mctx.save(); mctx.strokeStyle=col; mctx.lineWidth=lw; mctx.lineJoin='round';
+  if(dashed) mctx.setLineDash([5,5]);
+  mctx.beginPath();
+  for(let i=0;i<NG;i++){
+    const cx=P.l+(i/(NG-1))*(W-P.l-P.r);
+    const cy=P.t+(1-Math.max(-0.05,Math.min(1.15,u[i])))*(H-P.t-P.b);
+    i===0?mctx.moveTo(cx,cy):mctx.lineTo(cx,cy);
+  }
+  mctx.stroke(); mctx.restore();
+}
+
+function drawHM(u){
+  const hm=document.getElementById('hm');
+  const hctx=hm.getContext('2d');
+  const W=hm.width,H=hm.height||42;
+  const img=hctx.createImageData(W,H); const d=img.data;
+  for(let px=0;px<W;px++){
+    const xi=Math.floor(px/W*(NG-1));
+    const v=Math.max(0,Math.min(1,u[xi]));
+    const r=Math.min(255,v*2.2*255);
+    const g=Math.min(255,Math.max(0,(v-0.38)*2.2*255));
+    const b=Math.min(255,Math.max(0,(v-0.72)*4*255));
+    for(let py=0;py<H;py++){const idx=(py*W+px)*4;d[idx]=r;d[idx+1]=g;d[idx+2]=b;d[idx+3]=255;}
+  }
+  hctx.putImageData(img,0,0);
+}
+
+function drawMain(){
+  const W=mc.width,H=mc.height;
+  mctx.clearRect(0,0,W,H);
+  mctx.fillStyle='#f5faff'; mctx.fillRect(0,0,W,H);
+  drawGrid(W,H);
+  const ua=analytical(Bn,t,NM), um=mode1(Bn,t);
+  drawCurve(um,'#7b2fbe',1.5,true,W,H);
+  drawCurve(ua,'#e05a00',2.5,false,W,H);
+  // FIX: use solver-appropriate color indicator
+  const numCol = solverType==='cn'?'#0a7c4e':'#0077b6';
+  drawCurve(usim,numCol,1.8,false,W,H);
+
+  // Gibbs phenomenon annotation
+  // Show when N is low and IC has discontinuity
+  const showGibbs = NM<=8 && (ict==='step'||ict==='triangle');
+  if(showGibbs){
+    mctx.save();
+    const bx=P.l+8,by=P.t+8,bw=192,bh=22;
+    mctx.fillStyle='rgba(123,47,190,0.10)';
+    mctx.fillRect(bx,by,bw,bh);
+    mctx.strokeStyle='#7b2fbe'; mctx.lineWidth=0.8;
+    mctx.strokeRect(bx,by,bw,bh);
+    mctx.fillStyle='#7b2fbe';
+    mctx.font='bold 8.5px Space Mono,monospace';
+    mctx.textAlign='left';
+    mctx.fillText('⚡ Gibbs phenomenon  ~8.9% overshoot',bx+7,by+14);
+    mctx.restore();
+  }
+
+  let me=0,l2=0,mx=0,en=0;
+  for(let i=0;i<NG;i++){
+    const e=Math.abs(usim[i]-ua[i]);
+    me=Math.max(me,e); l2+=e*e; mx=Math.max(mx,usim[i]); en+=usim[i]**2;
+  }
+  l2=Math.sqrt(l2/NG); en/=NG;
+  document.getElementById('se').textContent=me.toExponential(2);
+  document.getElementById('sl').textContent=l2.toExponential(2);
+  document.getElementById('sm').textContent=mx.toFixed(4);
+  document.getElementById('sen').textContent=en.toFixed(4);
+  document.getElementById('hl').textContent=(Math.log(2)/(alpha*(Math.PI/L)**2)).toFixed(3)+'s';
+  drawHM(usim);
+  return l2;
+}
+
+// ═══════════════════════════════════════════════
+// 2D DEMO — FIX: coupled to alpha slider
+// ═══════════════════════════════════════════════
+const dc=document.getElementById('demo');
+const dctx=dc.getContext('2d');
+const D=64;
+let f2=new Float32Array(D*D);
+
+function init2D(){
+  f2=new Float32Array(D*D);
+  [[0.28,0.28,1.0],[0.72,0.72,0.75],[0.5,0.18,0.65]].forEach(([fx,fy,amp])=>{
+    const cx=Math.floor(fx*D),cy=Math.floor(fy*D);
+    for(let j=0;j<D;j++) for(let i=0;i<D;i++)
+      f2[j*D+i]+=amp*Math.exp(-((i-cx)**2+(j-cy)**2)/16);
+  });
+}
+
+function step2D(){
+  const nf=new Float32Array(D*D);
+  // FIX: use alpha-proportional r, capped at 0.24 for 2D stability (r ≤ 1/4)
+  const r2d=Math.min(0.24, alpha*0.24/0.5);
+  for(let j=1;j<D-1;j++) for(let i=1;i<D-1;i++){
+    const idx=j*D+i;
+    nf[idx]=f2[idx]+r2d*(f2[idx+1]+f2[idx-1]+f2[idx+D]+f2[idx-D]-4*f2[idx]);
+  }
+  f2=nf;
+}
+
+function draw2D(){
+  const W=dc.width,H=dc.height;
+  if(!W||!H) return;
+  const img=dctx.createImageData(W,H); const d=img.data;
+  const cw=W/D,ch=H/D;
+  for(let j=0;j<D;j++) for(let i=0;i<D;i++){
+    const v=Math.max(0,Math.min(1,f2[j*D+i]));
+    const r=Math.min(255,v*2.2*255);
+    const g=Math.min(255,Math.max(0,(v-0.3)*1.8*255));
+    const b=Math.min(255,(0.35+v*0.65)*255);
+    const px=Math.floor(i*cw),py=Math.floor(j*ch);
+    const pw=Math.ceil(cw),ph=Math.ceil(ch);
+    for(let py2=py;py2<py+ph&&py2<H;py2++)
+      for(let px2=px;px2<px+pw&&px2<W;px2++){
+        const idx=(py2*W+px2)*4;d[idx]=r;d[idx+1]=g;d[idx+2]=b;d[idx+3]=255;
+      }
+  }
+  dctx.putImageData(img,0,0);
+}
+
+function resizeDemo(){
+  const b=dc.parentElement;
+  const w=b.clientWidth||b.offsetWidth;
+  const h=b.clientHeight||b.offsetHeight;
+  if(w>0) dc.width=w;
+  if(h>0) dc.height=h;
+}
+
+// ═══════════════════════════════════════════════
+// ERROR CHART — with log/linear toggle
+// ═══════════════════════════════════════════════
+const ec=document.getElementById('errc');
+const ectx=ec.getContext('2d');
+function resizeErr(){ ec.width=ec.parentElement.clientWidth-2; ec.height=80; }
+
+function drawErr(){
+  const W=ec.width,H=ec.height;
+  ectx.clearRect(0,0,W,H);
+  ectx.fillStyle='#f5faff'; ectx.fillRect(0,0,W,H);
+  if(eHist.length<2) return;
+
+  ectx.strokeStyle='#c5dff0'; ectx.lineWidth=0.5;
+  for(let i=0;i<=3;i++){
+    const y=H-4-(i/3)*(H-8);
+    ectx.beginPath();ectx.moveTo(0,y);ectx.lineTo(W,y);ectx.stroke();
+  }
+
+  const vals=eHist.map(e=>e.v);
+  const maxE=Math.max(...vals,1e-12);
+
+  if(logScale){
+    const minPos=Math.max(Math.min(...vals.filter(v=>v>0),1e-12),1e-14);
+    const logMin=Math.log10(minPos)-0.5;
+    const logMax=Math.log10(maxE)+0.2;
+    const logRange=logMax-logMin||1;
+
+    ectx.strokeStyle='#e05a00'; ectx.lineWidth=1.8; ectx.lineJoin='round';
+    ectx.beginPath();
+    let started=false;
+    eHist.forEach((p,i)=>{
+      if(p.v<=0) return;
+      const x=(p.t/TMAX)*W;
+      const ly=(Math.log10(p.v)-logMin)/logRange;
+      const y=H-4-ly*(H-10);
+      if(!started){ectx.moveTo(x,y);started=true;}else ectx.lineTo(x,y);
+    });
+    ectx.stroke();
+
+    ectx.fillStyle='#6a8fa8'; ectx.font='8px Space Mono,monospace';
+    ectx.textAlign='left';  ectx.fillText('L²err (log)',2,10);
+    ectx.textAlign='right'; ectx.fillText(maxE.toExponential(1),W-2,10);
+    ectx.textAlign='right'; ectx.fillText(minPos.toExponential(1),W-2,H-4);
+  } else {
+    ectx.strokeStyle='#e05a00'; ectx.lineWidth=1.8; ectx.lineJoin='round';
+    ectx.beginPath();
+    eHist.forEach((p,i)=>{
+      const x=(p.t/TMAX)*W;
+      const y=H-4-(p.v/maxE)*(H-10);
+      i===0?ectx.moveTo(x,y):ectx.lineTo(x,y);
+    });
+    ectx.stroke();
+    ectx.fillStyle='#6a8fa8'; ectx.font='8px Space Mono,monospace';
+    ectx.textAlign='left';  ectx.fillText('L²err',2,10);
+    ectx.textAlign='right'; ectx.fillText(maxE.toExponential(1),W-2,10);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ANIMATION LOOP
+// ═══════════════════════════════════════════════
+function animate(ts){
+  if(!playing) return;
+  if(!lastTs) lastTs=ts;
+  const dtw=Math.min((ts-lastTs)/1000,0.05); lastTs=ts;
+  // C-N uses ~4x larger timestep so step count is lower for same wall-clock rate
+  const refDt = solverType==='cn' ? 2.0*dx*dx/alpha : 0.49*dx*dx/alpha;
+  const steps=Math.max(1,Math.ceil(dtw*spd/refDt));
+  for(let s=0;s<steps;s++){
+    if(t>=TMAX){playing=false;document.getElementById('pb').textContent='▶ Play';break;}
+    const res=(solverType==='cn'?cn:ftcs)(usim);
+    usim=res.u; t+=res.dt;
+  }
+  for(let s=0;s<3;s++) step2D();
+  draw2D();
+  const l2=drawMain();
+  if(!eHist.length||t-eHist[eHist.length-1].t>0.004) eHist.push({t,v:l2});
+  drawErr();
+  document.getElementById('tl').textContent=`t = ${t.toFixed(4)}`;
+  document.getElementById('tf').style.width=(t/TMAX*100)+'%';
+  animId=requestAnimationFrame(animate);
+}
+
+// ═══════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════
+document.getElementById('as').addEventListener('input',function(){
+  alpha=parseFloat(this.value);
+  document.getElementById('av').textContent=alpha.toFixed(2);
+  // FIX: reset sim and 2D demo together, redraw error chart immediately
+  initSim(); init2D(); draw2D();
+  drawMain(); drawErr();
+});
+
+document.getElementById('ms').addEventListener('input',function(){
+  NM=parseInt(this.value);
+  document.getElementById('mv').textContent=NM;
+  Bn=coeffs(uinit,NM);
+  drawMain(); drawErr(); // FIX: was missing drawErr()
+});
+
+document.getElementById('ss').addEventListener('input',function(){
+  spd=parseFloat(this.value);
+  document.getElementById('sv').textContent=spd+'×';
+});
+
+document.getElementById('ic').addEventListener('change',function(){
+  ict=this.value; initSim(); init2D(); draw2D();
+  drawMain(); drawErr();
+});
+
+document.getElementById('solver').addEventListener('change',function(){
+  solverType=this.value;
+  const badge=solverType==='cn'?'Crank-Nicolson':'FTCS';
+  document.getElementById('leg-num').textContent='Numerical '+badge;
+  initSim(); drawMain(); drawErr();
+});
+
+document.getElementById('pb').addEventListener('click',function(){
+  if(t>=TMAX) initSim();
+  playing=!playing;
+  this.textContent=playing?'⏸ Pause':'▶ Play';
+  if(playing){lastTs=null; animId=requestAnimationFrame(animate);}
+  else cancelAnimationFrame(animId);
+});
+
+document.getElementById('rb').addEventListener('click',function(){
+  playing=false; document.getElementById('pb').textContent='▶ Play';
+  cancelAnimationFrame(animId);
+  initSim(); drawMain(); init2D(); draw2D(); drawErr();
+  document.getElementById('tl').textContent='t = 0.0000';
+  document.getElementById('tf').style.width='0%';
+  lastTs=null;
+});
+
+// Log/Linear toggle for error chart
+document.getElementById('logtog').addEventListener('click',function(){
+  logScale=!logScale;
+  this.classList.toggle('on',logScale);
+  drawErr();
+});
+
+// Export PNG
+document.getElementById('expbtn').addEventListener('click',function(){
+  // Composite: main canvas + heatmap
+  const hm=document.getElementById('hm');
+  const out=document.createElement('canvas');
+  out.width=mc.width; out.height=mc.height+hm.height+10;
+  const ctx=out.getContext('2d');
+  ctx.drawImage(mc,0,0);
+  ctx.drawImage(hm,0,mc.height+10);
+  const a=document.createElement('a');
+  a.href=out.toDataURL('image/png');
+  a.download=`heat_eq_t${t.toFixed(4)}_a${alpha.toFixed(2)}_${solverType}.png`;
+  a.click();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  if(e.key===' '||e.code==='Space'){
+    e.preventDefault();
+    document.getElementById('pb').click();
+  } else if(e.key==='r'||e.key==='R'){
+    document.getElementById('rb').click();
+  } else if(e.key==='Escape'){
+    document.querySelectorAll('.overlay.on').forEach(el=>el.classList.remove('on'));
+  }
+});
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+function resizeAll(){ resizeMain(); resizeDemo(); resizeErr(); }
+function renderAll(){ drawMain(); draw2D(); drawErr(); }
+
+function onResize(){ resizeAll(); renderAll(); }
+window.addEventListener('resize',onResize);
+
+initSim(); init2D();
+
+// Defer first paint until browser has completed layout (clientWidth > 0)
+function tryInit(){
+  resizeAll();
+  if(!mc.width || !dc.width){
+    requestAnimationFrame(tryInit);
+    return;
+  }
+  renderAll();
+}
+requestAnimationFrame(tryInit);
+</script>
+
+<!-- KaTeX for modal equations -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script>
+  renderMathInElement(document.body,{
+    delimiters:[
+      {left:'\\[',right:'\\]',display:true},
+      {left:'\\(',right:'\\)',display:false}
+    ],
+    throwOnError:false
+  });
+</script>
+</body>
+</html>

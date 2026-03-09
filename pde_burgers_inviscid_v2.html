@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inviscid Burgers Equation Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+:root{
+  --bg:#deeefb; --bg2:#eaf4fc; --card:#ffffff;
+  --border:#90c4e8; --accent:#1255a0; --accent2:#4da3e0;
+  --text:#0b1e35; --text2:#315878;
+  --col-exact:#1255a0; --col-num:#c8370a; --col-visc:#1a7a3c;
+  --col-shock:#b71c1c; --col-char:#6a1b9a; --col-init:#7a96a8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lora',Georgia,serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* KATEX FIXES */
+.katex,.katex *{box-sizing:content-box !important}
+.katex .mopen,.katex .mclose,.katex .mord,.katex .mbin,.katex .mrel,.katex .mop,.katex .mpunct{color:inherit !important}
+
+header{background:var(--accent);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,.28);flex-shrink:0}
+header h1{font-size:1.32rem;font-weight:600;letter-spacing:.3px}
+.subtitle{font-style:italic;opacity:.8;font-size:.88rem;margin-left:14px;font-family:'JetBrains Mono',monospace}
+.app-body{display:flex;flex:1;min-height:0}
+
+/* SIDEBAR */
+.sidebar{width:256px;flex-shrink:0;background:var(--bg2);border-right:1.5px solid var(--border);padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:9px}
+.cfg{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.cfg h3{font-size:.7rem;text-transform:uppercase;letter-spacing:1.1px;color:var(--accent);margin-bottom:8px;font-family:'JetBrains Mono',monospace;font-weight:500}
+.param{margin-bottom:8px}
+.param label{display:flex;justify-content:space-between;font-size:.85rem;color:var(--text2);margin-bottom:3px}
+.param label span{font-family:'JetBrains Mono',monospace;font-size:.81rem;color:var(--accent);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;height:18px}
+select{width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:'JetBrains Mono',monospace;font-size:.81rem;color:var(--text);cursor:pointer}
+.trow{display:flex;justify-content:space-between;align-items:center;font-size:.83rem;color:var(--text2);margin-bottom:5px}
+.tog{position:relative;width:34px;height:19px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.ts{position:absolute;cursor:pointer;inset:0;background:#bbb;border-radius:20px;transition:.3s}
+.ts::before{content:'';position:absolute;width:13px;height:13px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s}
+.tog input:checked+.ts{background:var(--accent2)}
+.tog input:checked+.ts::before{transform:translateX(15px)}
+
+.live-stat{font-size:.76rem;font-family:'JetBrains Mono',monospace;color:var(--text2);line-height:2.0}
+.live-stat .sv{color:var(--accent);font-weight:500}
+.live-stat .sv-shock{color:var(--col-shock);font-weight:600}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;padding:12px;gap:10px;min-height:0;overflow:hidden}
+.tabs{display:flex;gap:3px;flex-shrink:0}
+.tbtn{padding:6px 16px;border:1px solid var(--border);border-radius:6px 6px 0 0;background:var(--bg2);color:var(--text2);cursor:pointer;font-family:'Lora',serif;font-size:.91rem;transition:all .2s;border-bottom:none}
+.tbtn.active{background:var(--card);color:var(--accent);font-weight:600;position:relative;top:1px}
+.canvas-container{background:var(--card);border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:12px;flex:1;display:flex;flex-direction:column;gap:10px;min-height:0}
+.ctrl-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;flex-shrink:0}
+.btn{padding:5px 14px;border:none;border-radius:6px;cursor:pointer;font-family:'Lora',serif;font-size:.91rem;font-weight:600;transition:all .18s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#0a3d7a}
+.btn-sec{background:var(--bg2);color:var(--text);border:1px solid var(--border)}
+.btn-sec:hover{background:var(--border)}
+.btn-rst{background:#ffebee;color:#b71c1c;border:1px solid #ffcdd2}
+.btn-rst:hover{background:#ffcdd2}
+.btn-hlp{background:#fff8e1;color:#b85c00;border:1px solid #ffe082}
+.btn-hlp:hover{background:#ffe082}
+.tdisplay{font-family:'JetBrains Mono',monospace;font-size:.84rem;color:var(--text2);margin-left:auto}
+.legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px;font-size:.79rem;color:var(--text2)}
+.ll{width:18px;height:2.5px;border-radius:2px}
+.badge{font-family:'JetBrains Mono',monospace;font-size:.77rem;padding:3px 9px;border-radius:12px;border:1px solid;transition:all .3s}
+.b-ok{background:#e3f2fd;color:#1255a0;border-color:#90c4e8}
+.b-pre{background:#e8f5e9;color:#1a7a3c;border-color:#a5d6a7}
+.b-near{background:#fff8e1;color:#b85c00;border-color:#ffe082}
+.b-shock{background:#ffebee;color:#b71c1c;border-color:#ef9a9a;animation:pulse .7s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.65}to{opacity:1}}
+
+.crow{display:flex;gap:10px;flex:1;min-height:0}
+.cwrap{flex:1;position:relative;background:#f5faff;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.cwrap canvas{width:100%;height:100%;display:block}
+.clabel{position:absolute;top:7px;left:10px;font-size:.73rem;color:var(--text2);font-family:'JetBrains Mono',monospace;pointer-events:none;background:rgba(255,255,255,.9);padding:2px 7px;border-radius:4px;border:1px solid var(--border)}
+
+.sbar{background:var(--bg2);border-top:1.5px solid var(--border);padding:3px 16px;font-size:.74rem;color:var(--text2);font-family:'JetBrains Mono',monospace;display:flex;gap:18px;flex-shrink:0;flex-wrap:wrap}
+
+/* MODAL */
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:200;align-items:center;justify-content:center}
+.moverlay.open{display:flex}
+.modal{background:var(--card);border-radius:12px;max-width:700px;width:93%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 12px 55px rgba(0,0,0,.32);overflow:hidden}
+.mhdr{background:var(--accent);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+.mhdr h2{font-size:1.1rem}
+.mclose{background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;opacity:.8;line-height:1}
+.mclose:hover{opacity:1}
+.mnav{display:flex;gap:3px;padding:8px 14px;background:#eef6fb;border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.mnbtn{padding:4px 11px;border:1px solid var(--border);border-radius:14px;background:#fff;font-size:.79rem;cursor:pointer;white-space:nowrap;transition:all .18s;font-family:'Lora',serif}
+.mnbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mbody{flex:1;padding:18px 22px;overflow-y:auto;line-height:1.78;font-size:.96rem}
+.mbody h3{color:var(--accent);font-size:1.07rem;margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.mbody p{margin-bottom:10px}
+.mbody ul{padding-left:22px;margin-bottom:10px}
+.mbody li{margin-bottom:5px}
+.mbox{text-align:center;padding:11px;background:#e6f2fb;border:1px solid var(--border);border-radius:6px;margin:10px 0;font-size:1.04rem}
+.abox{background:#e3f2fd;border-left:4px solid var(--accent2);padding:11px 15px;border-radius:0 6px 6px 0;margin:10px 0;font-style:italic}
+.rbox{background:#ffebee;border-left:4px solid #e53935;padding:10px 15px;border-radius:0 6px 6px 0;margin:10px 0}
+.itable{width:100%;border-collapse:collapse;font-size:.87rem;margin:10px 0}
+.itable th{background:var(--accent);color:#fff;padding:7px 11px;text-align:left}
+.itable td{padding:6px 11px;border-bottom:1px solid var(--border)}
+.itable tr:nth-child(even) td{background:#eef6fb}
+code{font-family:'JetBrains Mono',monospace;font-size:.84em;background:#e6f2fb;padding:1px 5px;border-radius:3px;color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:1.5rem">💥</span>
+    <h1>Inviscid Burgers Equation Explorer</h1>
+    <span class="subtitle">u_t + u·u_x = 0</span>
+  </div>
+  <button class="btn btn-hlp" onclick="openHelp()">📖 Help / Theory</button>
+</header>
+
+<div class="app-body">
+<!-- ──── SIDEBAR ──── -->
+<div class="sidebar">
+
+  <div class="cfg">
+    <h3>Initial Condition</h3>
+    <div class="param">
+      <label>Shape</label>
+      <select id="ic-sel" onchange="resetSim()">
+        <option value="sine">Sine Wave</option>
+        <option value="gaussian" selected>Gaussian Bump</option>
+        <option value="nwave">N-Wave</option>
+        <option value="step_shock">Step → Shock (u_L &gt; u_R)</option>
+        <option value="step_rare">Step → Rarefaction (u_L &lt; u_R)</option>
+        <option value="double">Double Pulse</option>
+      </select>
+    </div>
+    <div class="param">
+      <label>Amplitude A <span id="val-amp">1.0</span></label>
+      <input type="range" id="sl-amp" min="0.3" max="3.0" step="0.1" value="1.0" oninput="upAmp(this.value)">
+    </div>
+    <div class="param" id="param-sig">
+      <label>Width σ <span id="val-sig">0.12</span></label>
+      <input type="range" id="sl-sig" min="0.03" max="0.35" step="0.01" value="0.12" oninput="upSig(this.value)">
+    </div>
+  </div>
+
+  <div class="cfg">
+    <h3>Numerical Setup</h3>
+    <div class="param">
+      <label>Grid points N <span id="val-N">300</span></label>
+      <input type="range" id="sl-N" min="100" max="600" step="50" value="300" oninput="upN(this.value)">
+    </div>
+    <div class="param">
+      <label>CFL number ν <span id="val-cfl">0.90</span></label>
+      <input type="range" id="sl-cfl" min="0.1" max="1.2" step="0.05" value="0.9" oninput="upCFL(this.value)">
+    </div>
+    <div class="param">
+      <label>Scheme</label>
+      <select id="sch-sel" onchange="resetSim()">
+        <option value="godunov">Godunov (entropy-safe)</option>
+        <option value="laxw">Lax-Wendroff (2nd order)</option>
+        <option value="laxf">Lax-Friedrichs</option>
+        <option value="roe">Roe (upwind)</option>
+      </select>
+    </div>
+    <div class="param">
+      <label>Viscosity ε <span id="val-eps">0.004</span></label>
+      <input type="range" id="sl-eps" min="0.000" max="0.025" step="0.001" value="0.004" oninput="upEps(this.value)">
+    </div>
+  </div>
+
+  <div class="cfg">
+    <h3>Display</h3>
+    <div class="trow"><span>Exact (pre-shock)</span>
+      <label class="tog"><input type="checkbox" id="tog-exact" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Numerical solution</span>
+      <label class="tog"><input type="checkbox" id="tog-num" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Viscous Burgers</span>
+      <label class="tog"><input type="checkbox" id="tog-visc" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Initial profile</span>
+      <label class="tog"><input type="checkbox" id="tog-init" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Shock / gradient marker</span>
+      <label class="tog"><input type="checkbox" id="tog-shock" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Fill under curve</span>
+      <label class="tog"><input type="checkbox" id="tog-fill" checked onchange="redraw()"><span class="ts"></span></label></div>
+  </div>
+
+  <div class="cfg">
+    <h3>Animation</h3>
+    <div class="param">
+      <label>Speed <span id="val-spd">1.0</span>×</label>
+      <input type="range" id="sl-spd" min="0.1" max="5" step="0.1" value="1" oninput="upSpd(this.value)">
+    </div>
+    <div class="param">
+      <label>Loop at T <span id="val-tmax">3.0</span></label>
+      <input type="range" id="sl-tmax" min="0.5" max="10" step="0.5" value="3" oninput="upTmax(this.value)">
+    </div>
+  </div>
+
+  <div class="cfg">
+    <h3>Live Stats</h3>
+    <div class="live-stat">
+      <div>t* (shock forms): <span id="ls-tstar" class="sv-shock">—</span></div>
+      <div>Shock at x = <span id="ls-xs" class="sv-shock">—</span></div>
+      <div>s (R-H speed) = <span id="ls-spd" class="sv" style="color:var(--col-char)">—</span></div>
+      <div>u_L = <span id="ls-ul" class="sv">—</span></div>
+      <div>u_R = <span id="ls-ur" class="sv">—</span></div>
+      <div>max|u| = <span id="ls-maxu" class="sv">—</span></div>
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- ──── MAIN ──── -->
+<div class="main">
+  <div class="tabs">
+    <button class="tbtn active" onclick="switchTab('evo',this)">🌊 Evolution</button>
+    <button class="tbtn" onclick="switchTab('xt',this)">📐 x–t Spacetime</button>
+    <button class="tbtn" onclick="switchTab('shock',this)">💥 Shock Analytics</button>
+    <button class="tbtn" onclick="switchTab('cmp',this)">📊 PDE Comparison</button>
+  </div>
+
+  <div class="canvas-container">
+    <div class="ctrl-bar">
+      <button class="btn btn-primary" id="btn-play" onclick="togglePlay()">▶ Play</button>
+      <button class="btn btn-sec" onclick="stepFwd()">⏭ Step</button>
+      <button class="btn btn-rst" onclick="resetSim()">↺ Reset</button>
+      <canvas id="cv-legend" height="22" style="align-self:center;flex-shrink:0"></canvas>
+      <span class="tdisplay" id="tdisplay">t = 0.000</span>
+      <span class="badge b-pre" id="phase-badge">pre-shock</span>
+      <span class="badge b-ok" id="cfl-badge">ν = 0.90</span>
+    </div>
+
+    <!-- Tab: EVOLUTION -->
+    <div id="tab-evo" style="display:flex;flex-direction:column;flex:1;gap:10px;min-height:0">
+      <div class="cwrap" style="flex:2.2;width:100%">
+        <canvas id="cv-main"></canvas>
+        <div class="clabel">u(x, t) — Solution Profile</div>
+      </div>
+      <div class="cwrap" style="flex:1;width:100%">
+        <canvas id="cv-grad"></canvas>
+        <div class="clabel">∂u/∂x — Gradient (steepening → shock)</div>
+      </div>
+    </div>
+
+    <!-- Tab: x-t SPACETIME -->
+    <div id="tab-xt" class="crow" style="display:none">
+      <div class="cwrap">
+        <canvas id="cv-xt"></canvas>
+        <div class="clabel">x–t Heatmap + Characteristics · Click to trace a characteristic</div>
+      </div>
+    </div>
+
+    <!-- Tab: SHOCK ANALYTICS -->
+    <div id="tab-shock" class="crow" style="display:none">
+      <div class="cwrap">
+        <canvas id="cv-shockpos"></canvas>
+        <div class="clabel">Shock position x_s(t)</div>
+      </div>
+      <div class="cwrap">
+        <canvas id="cv-shockspd"></canvas>
+        <div class="clabel">u_L, u_R, Rankine-Hugoniot speed s = (u_L + u_R)/2</div>
+      </div>
+    </div>
+
+    <!-- Tab: PDE COMPARISON -->
+    <div id="tab-cmp" class="crow" style="display:none">
+      <div class="cwrap">
+        <canvas id="cv-cmp-tr"></canvas>
+        <div class="clabel">Transport · u_t + c·u_x = 0</div>
+      </div>
+      <div class="cwrap">
+        <canvas id="cv-cmp-bu"></canvas>
+        <div class="clabel">Inviscid Burgers · u_t + u·u_x = 0</div>
+      </div>
+      <div class="cwrap">
+        <canvas id="cv-cmp-vb"></canvas>
+        <div class="clabel">Viscous Burgers · u_t + u·u_x = ε·u_xx</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /app-body -->
+
+<div class="sbar">
+  <span id="sb-t">t = 0.000</span>
+  <span id="sb-tstar">t* = —</span>
+  <span id="sb-shock">Shock: —</span>
+  <span id="sb-dx">dx = —</span>
+  <span id="sb-dt">dt = —</span>
+  <span id="sb-sch">Godunov</span>
+  <span id="sb-cfl">CFL = —</span>
+</div>
+
+<!-- HELP MODAL -->
+<div class="moverlay" id="help-modal">
+  <div class="modal">
+    <div class="mhdr">
+      <h2>📖 Inviscid Burgers Equation — Theory Guide</h2>
+      <button class="mclose" onclick="closeHelp()">×</button>
+    </div>
+    <div class="mnav" id="mnav"></div>
+    <div class="mbody" id="mbody"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  PARAMETERS
+// ═══════════════════════════════════════
+const P = { amp:1.0, sigma:0.12, N:300, cfl:0.90, speed:1.0, tmax:3.0, eps:0.004 };
+
+let t=0, dx=0, dt=0, maxAbsU0=1;
+let u0=[], uNum=[], uVisc=[], uTransport=[], uExact=[];
+let tStar=Infinity, postShock=false;
+let shockHistory=[];          // {t, x, uL, uR, speed}
+let xtSnapshots=[];           // {t, u:[...]}  for heatmap
+let lastSnapT=-Infinity;
+let xtUserChars=[];           // user-clicked characteristics
+let curTab='evo';
+let playing=false, animId=null, lastTs=null;
+
+const SCHEME_NAMES={godunov:'Godunov',laxw:'Lax-Wendroff',laxf:'Lax-Friedrichs',roe:'Roe'};
+
+// ═══════════════════════════════════════
+//  GRID
+// ═══════════════════════════════════════
+function computeGrid(){
+  dx = 1.0/P.N;
+  maxAbsU0 = Math.max(Math.max(...u0.map(Math.abs)), 0.01);
+  dt = P.cfl*dx/maxAbsU0;
+}
+
+// ═══════════════════════════════════════
+//  INITIAL CONDITIONS
+// ═══════════════════════════════════════
+function buildIC(){
+  const A=P.amp, s=P.sigma;
+  return Array.from({length:P.N},(_,j)=>{
+    const x=j*dx;
+    switch(document.getElementById('ic-sel').value){
+      case 'sine':       return A*Math.sin(2*Math.PI*x);
+      case 'gaussian':   return A*Math.exp(-((x-0.35)**2)/(2*s*s));
+      case 'nwave': {
+        const xc=0.5, ss=s*1.2;
+        return A*(x-xc)/ss*Math.exp(-((x-xc)**2)/(2*ss*ss))*2.8;
+      }
+      case 'step_shock': return x<0.35?A:(x<0.45?A*(0.45-x)/0.1:0);
+      case 'step_rare':  return x>0.55?A:(x>0.45?A*(x-0.45)/0.1:0);
+      case 'double': {
+        const g1=A*Math.exp(-((x-0.28)**2)/(2*s*s));
+        const g2=0.7*A*Math.exp(-((x-0.65)**2)/(2*s*s));
+        return g1+g2;
+      }
+      default: return A*Math.sin(2*Math.PI*x);
+    }
+  });
+}
+
+// ═══════════════════════════════════════
+//  SHOCK FORMATION TIME
+// ═══════════════════════════════════════
+function computeTstar(){
+  let minD=0;
+  for(let j=0;j<P.N;j++){
+    const d=(u0[(j+1)%P.N]-u0[j])/dx;
+    if(d<minD) minD=d;
+  }
+  return minD<-1e-10 ? -1/minD : Infinity;
+}
+
+// ═══════════════════════════════════════
+//  u0 INTERPOLATION (periodic)
+// ═══════════════════════════════════════
+function interpU0(x){
+  const xw=((x%1)+1)%1;
+  const fi=xw/dx;
+  const j=Math.floor(fi)%P.N;
+  const fr=fi-Math.floor(fi);
+  return u0[j]*(1-fr)+u0[(j+1)%P.N]*fr;
+}
+
+// ═══════════════════════════════════════
+//  EXACT SOLUTION — Newton (valid pre-shock)
+// ═══════════════════════════════════════
+function computeExact(){
+  if(t<1e-10) return [...u0];
+  const res=new Array(P.N);
+  for(let i=0;i<P.N;i++){
+    const x=i*dx;
+    let x0=x;
+    for(let it=0;it<50;it++){
+      const v=interpU0(x0);
+      const F=x0+v*t-x;
+      const vp=(interpU0(x0+1e-6)-interpU0(x0-1e-6))*5e5;
+      const dF=1+vp*t;
+      if(Math.abs(dF)<1e-11){res[i]=NaN;break;}
+      const step=-F/dF;
+      x0+=step;
+      if(Math.abs(step)<1e-10){res[i]=interpU0(x0);break;}
+    }
+    if(res[i]===undefined) res[i]=interpU0(x0);
+  }
+  return res;
+}
+
+// ═══════════════════════════════════════
+//  GODUNOV FLUX  f(u) = u²/2
+// ═══════════════════════════════════════
+function godunovFlux(uL,uR){
+  if(uL>=uR){ const s=(uL+uR)/2; return s>=0?uL*uL/2:uR*uR/2; }
+  // rarefaction: min of convex f over [uL,uR]
+  if(uL>=0) return uL*uL/2;
+  if(uR<=0) return uR*uR/2;
+  return 0; // sonic
+}
+
+// ═══════════════════════════════════════
+//  NUMERICAL BURGERS STEP
+// ═══════════════════════════════════════
+function stepBurgers(u,sch){
+  const N=P.N, r=dt/dx;
+  const un=new Array(N);
+  for(let j=0;j<N;j++){
+    const jm=(j-1+N)%N, jp=(j+1)%N;
+    const uC=u[j], uR=u[jp], uLm=u[jm];
+    let fR,fL;
+    if(sch==='godunov'){
+      fR=godunovFlux(uC,uR); fL=godunovFlux(uLm,uC);
+    } else if(sch==='laxw'){
+      const aR=(uC+uR)/2, aL=(uLm+uC)/2;
+      // Harten entropy fix: if sonic point in [uL,uR], blend with Godunov flux
+      const delta=0.15*maxAbsU0;
+      const eFixR=(uC<=0&&uR>=0)&&Math.abs(aR)<delta;
+      const eFixL=(uLm<=0&&uC>=0)&&Math.abs(aL)<delta;
+      fR=eFixR?godunovFlux(uC,uR):0.5*(uC*uC+uR*uR)/2-0.5*r*aR*(uR*uR/2-uC*uC/2);
+      fL=eFixL?godunovFlux(uLm,uC):0.5*(uLm*uLm+uC*uC)/2-0.5*r*aL*(uC*uC/2-uLm*uLm/2);
+    } else if(sch==='laxf'){
+      fR=0.5*(uC*uC/2+uR*uR/2)-0.5/r*(uR-uC);
+      fL=0.5*(uLm*uLm/2+uC*uC/2)-0.5/r*(uC-uLm);
+    } else { // roe
+      const sR=(uC+uR)/2, sL=(uLm+uC)/2;
+      fR=sR>=0?uC*uC/2:uR*uR/2;
+      fL=sL>=0?uLm*uLm/2:uC*uC/2;
+    }
+    un[j]=uC-r*(fR-fL);
+    if(!isFinite(un[j])) un[j]=0;
+    un[j]=Math.max(-15,Math.min(15,un[j]));
+  }
+  return un;
+}
+
+// ═══════════════════════════════════════
+//  VISCOUS BURGERS STEP
+// ═══════════════════════════════════════
+function stepViscous(u){
+  const mu=P.eps*dt/(dx*dx);
+  if(mu>0.49){
+    // Parabolic stability limit exceeded: flag badge and return unchanged
+    const cb=document.getElementById('cfl-badge');
+    cb.textContent='ε unstable!';cb.className='badge b-shock';
+    return u;
+  }
+  const ub=stepBurgers(u,document.getElementById('sch-sel').value);
+  const un=new Array(P.N);
+  for(let j=0;j<P.N;j++){
+    const jm=(j-1+P.N)%P.N, jp=(j+1)%P.N;
+    un[j]=ub[j]+mu*(u[jp]-2*u[j]+u[jm]);
+    if(!isFinite(un[j])) un[j]=0;
+    un[j]=Math.max(-15,Math.min(15,un[j]));
+  }
+  return un;
+}
+
+// ═══════════════════════════════════════
+//  TRANSPORT STEP (upwind, c = mean|u0|/2)
+// ═══════════════════════════════════════
+let cTransport=1;
+function stepTransport(u){
+  const r=cTransport*dt/dx;
+  const un=new Array(P.N);
+  for(let j=0;j<P.N;j++){
+    const jm=(j-1+P.N)%P.N, jp=(j+1)%P.N;
+    un[j]=cTransport>=0?u[j]-r*(u[j]-u[jm]):u[j]-r*(u[jp]-u[j]);
+    if(!isFinite(un[j])) un[j]=0;
+  }
+  return un;
+}
+
+// ═══════════════════════════════════════
+//  SHOCK DETECTION
+// ═══════════════════════════════════════
+function detectShock(u){
+  let minG=0, sj=-1;
+  for(let j=0;j<P.N-1;j++){
+    const g=(u[j+1]-u[j])/dx;
+    if(g<minG){minG=g;sj=j;}
+  }
+  // Threshold: steeper than 3× the initial max negative gradient, and at least u0-scale/dx
+  const initMaxNegGrad = isFinite(tStar) ? -1/tStar : -maxAbsU0/dx*0.1;
+  const thr = Math.min(initMaxNegGrad * 3, -maxAbsU0/dx * 0.15);
+  if(sj>=0&&minG<thr){
+    const jL=Math.max(0,sj-2), jR=Math.min(P.N-1,sj+3);
+    const uL=u[jL], uR=u[jR];
+    return {active:true, x:(sj+0.5)*dx, uL, uR, speed:(uL+uR)/2, j:sj};
+  }
+  return {active:false};
+}
+
+// ═══════════════════════════════════════
+//  SIMULATION CONTROL
+// ═══════════════════════════════════════
+function resetSim(){
+  playing=false; document.getElementById('btn-play').textContent='▶ Play';
+  if(animId) cancelAnimationFrame(animId);
+  lastTs=null; t=0; postShock=false;
+  shockHistory=[]; xtSnapshots=[]; lastSnapT=-Infinity; xtUserChars=[];
+
+  // Grey out σ slider for ICs that don't use it
+  const ic=document.getElementById('ic-sel').value;
+  const sigParam=document.getElementById('param-sig');
+  const isStep=ic==='step_shock'||ic==='step_rare';
+  sigParam.style.opacity=isStep?'0.38':'1';
+  sigParam.querySelector('input').disabled=isStep;
+  sigParam.title=isStep?'σ not used for step initial conditions':'';
+
+  u0=buildIC(); computeGrid();
+  tStar=computeTstar();
+  cTransport=maxAbsU0*0.7;
+
+  uNum=[...u0]; uVisc=[...u0]; uTransport=[...u0]; uExact=[...u0];
+  updateStatus(); redraw();
+}
+
+function advance(realMs){
+  const simDt=Math.min(realMs*P.speed*0.001,0.06);
+  let steps=Math.max(1,Math.round(simDt/dt));
+  const sch=document.getElementById('sch-sel').value;
+  for(let s=0;s<steps;s++){
+    t+=dt;
+    if(t>P.tmax){
+      t=0; postShock=false;
+      uNum=[...u0]; uVisc=[...u0]; uTransport=[...u0];
+      shockHistory=[]; xtSnapshots=[]; lastSnapT=-Infinity;
+    }
+    uNum=stepBurgers(uNum,sch);
+    uVisc=stepViscous(uVisc);
+    uTransport=stepTransport(uTransport);
+    // snapshot for x-t heatmap every ~0.04 sim time
+    if(t-lastSnapT>0.035){
+      xtSnapshots.push({t,u:[...uNum]});
+      if(xtSnapshots.length>500) xtSnapshots.shift();
+      lastSnapT=t;
+    }
+    // shock tracking
+    const sh=detectShock(uNum);
+    if(sh.active){
+      postShock=true;
+      if(shockHistory.length===0||Math.abs(t-(shockHistory[shockHistory.length-1]||{t:-1}).t)>dt*0.5)
+        shockHistory.push({t,x:sh.x,uL:sh.uL,uR:sh.uR,speed:sh.speed});
+      if(shockHistory.length>3000) shockHistory.shift();
+    }
+  }
+  uExact=computeExact();
+}
+
+function togglePlay(){
+  playing=!playing;
+  document.getElementById('btn-play').textContent=playing?'⏸ Pause':'▶ Play';
+  if(playing){lastTs=null;animId=requestAnimationFrame(loop);}
+}
+function loop(ts){
+  if(!playing) return;
+  if(lastTs!==null) advance(ts-lastTs);
+  lastTs=ts; updateStatus(); redraw();
+  animId=requestAnimationFrame(loop);
+}
+function stepFwd(){
+  if(playing) return;
+  const sch=document.getElementById('sch-sel').value;
+  for(let s=0;s<25;s++){
+    t+=dt;
+    if(t>P.tmax){t=0;postShock=false;uNum=[...u0];uVisc=[...u0];uTransport=[...u0];shockHistory=[];xtSnapshots=[];lastSnapT=-Infinity;}
+    uNum=stepBurgers(uNum,sch);
+    uVisc=stepViscous(uVisc);
+    uTransport=stepTransport(uTransport);
+    if(t-lastSnapT>0.035){xtSnapshots.push({t,u:[...uNum]});if(xtSnapshots.length>500)xtSnapshots.shift();lastSnapT=t;}
+    const sh=detectShock(uNum);
+    if(sh.active){postShock=true;shockHistory.push({t,x:sh.x,uL:sh.uL,uR:sh.uR,speed:sh.speed});if(shockHistory.length>3000)shockHistory.shift();}
+  }
+  uExact=computeExact();
+  updateStatus(); redraw();
+}
+
+// ═══════════════════════════════════════
+//  STATUS UPDATE
+// ═══════════════════════════════════════
+function updateStatus(){
+  const sh=detectShock(uNum);
+  const cflV=maxAbsU0*dt/dx;
+  const sch=document.getElementById('sch-sel').value;
+  const mxU=Math.max(...uNum.map(Math.abs)).toFixed(3);
+
+  document.getElementById('tdisplay').textContent=`t = ${t.toFixed(3)}`;
+  document.getElementById('sb-t').textContent=`t = ${t.toFixed(3)}`;
+  document.getElementById('sb-tstar').textContent=`t* = ${isFinite(tStar)?tStar.toFixed(3):'∞'}`;
+  document.getElementById('sb-dx').textContent=`dx = ${dx.toFixed(5)}`;
+  document.getElementById('sb-dt').textContent=`dt = ${dt.toFixed(5)}`;
+  document.getElementById('sb-sch').textContent=SCHEME_NAMES[sch]||sch;
+  document.getElementById('sb-cfl').textContent=`CFL = ${cflV.toFixed(3)}`;
+  document.getElementById('sb-shock').textContent=sh.active?`Shock @ x=${sh.x.toFixed(3)}`:'No shock detected';
+
+  document.getElementById('ls-tstar').textContent=isFinite(tStar)?tStar.toFixed(3):'∞';
+  document.getElementById('ls-xs').textContent=sh.active?sh.x.toFixed(3):'—';
+  document.getElementById('ls-spd').textContent=sh.active?sh.speed.toFixed(3):'—';
+  document.getElementById('ls-ul').textContent=sh.active?sh.uL.toFixed(3):'—';
+  document.getElementById('ls-ur').textContent=sh.active?sh.uR.toFixed(3):'—';
+  document.getElementById('ls-maxu').textContent=mxU;
+
+  // badges
+  const cflB=document.getElementById('cfl-badge');
+  cflB.textContent=`ν = ${cflV.toFixed(2)}`;
+  if(cflV>1.0){cflB.className='badge b-shock';cflB.textContent=`ν = ${cflV.toFixed(2)} ⚠ UNSTABLE`;}
+  else cflB.className='badge '+(cflV<=1?'b-ok':'b-near');
+
+  const phB=document.getElementById('phase-badge');
+  if(sh.active){phB.textContent='⚡ SHOCK';phB.className='badge b-shock';}
+  else if(t>tStar-0.05&&isFinite(tStar)){phB.textContent='⚠ near t*';phB.className='badge b-near';}
+  else{phB.textContent='pre-shock';phB.className='badge b-pre';}
+}
+
+// ═══════════════════════════════════════
+//  DRAWING UTILITIES
+// ═══════════════════════════════════════
+const PAD={l:46,r:18,t:22,b:36};
+
+function fitCanvas(cv){
+  const r=cv.parentElement.getBoundingClientRect();
+  cv.width=Math.max(r.width,60); cv.height=Math.max(r.height,60);
+}
+
+function bgFill(ctx,W,H){
+  ctx.fillStyle='#f5faff'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#d8eaf5'; ctx.lineWidth=0.5;
+  [.25,.5,.75].forEach(f=>{
+    const px=PAD.l+f*(W-PAD.l-PAD.r);
+    ctx.beginPath();ctx.moveTo(px,PAD.t);ctx.lineTo(px,H-PAD.b);ctx.stroke();
+  });
+}
+
+function drawAxes(ctx,W,H,ymin,ymax,ylabel,pr){
+  pr=pr||PAD.r;
+  ctx.save();
+  ctx.strokeStyle='#9ab';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,H-PAD.b);ctx.lineTo(W-pr,H-PAD.b);ctx.stroke();
+  ctx.fillStyle='#567';ctx.font='10px JetBrains Mono,monospace';
+  [0,.25,.5,.75,1].forEach(f=>{
+    const px=PAD.l+f*(W-PAD.l-pr);
+    ctx.beginPath();ctx.moveTo(px,H-PAD.b);ctx.lineTo(px,H-PAD.b+4);ctx.stroke();
+    ctx.fillText(f.toFixed(2),px-14,H-PAD.b+14);
+  });
+  const yticks=[];
+  for(let y=Math.ceil(ymin*4)/4;y<=ymax+.01;y+=.25) yticks.push(Math.round(y*100)/100);
+  yticks.forEach(y=>{
+    const py=H-PAD.b-(y-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    ctx.beginPath();ctx.moveTo(PAD.l-3,py);ctx.lineTo(PAD.l,py);ctx.stroke();
+    ctx.fillText(y.toFixed(2),1,py+3.5);
+  });
+  if(ymin<0&&ymax>0){
+    const y0=H-PAD.b-(0-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    ctx.strokeStyle='#c0d8e8';ctx.lineWidth=0.7;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(PAD.l,y0);ctx.lineTo(W-pr,y0);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.fillStyle='#445';ctx.font='11px Lora,serif';
+  ctx.fillText('x',W/2,H-1);
+  ctx.save();ctx.translate(11,H/2);ctx.rotate(-Math.PI/2);ctx.fillText(ylabel,0,0);ctx.restore();
+  ctx.restore();
+}
+
+function plotLine(ctx,arr,W,H,ymin,ymax,color,lw,dash,fill,pr){
+  if(!arr||!arr.length) return;
+  pr=pr||PAD.r;
+  const pW=W-PAD.l-pr;
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.setLineDash(dash||[]);
+  ctx.beginPath();
+  let started=false;
+  arr.forEach((v,i)=>{
+    if(!isFinite(v)) return;
+    const px=PAD.l+(i/(arr.length-1))*pW;
+    const py=H-PAD.b-(v-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    started?(ctx.lineTo(px,py)):(ctx.moveTo(px,py));
+    started=true;
+  });
+  ctx.stroke();
+  if(fill){
+    const y0=H-PAD.b-(0-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+    ctx.globalAlpha=0.12;ctx.fillStyle=color;
+    ctx.lineTo(PAD.l+pW,y0);ctx.lineTo(PAD.l,y0);
+    ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+  }
+  ctx.setLineDash([]);ctx.restore();
+}
+
+function vShockLine(ctx,xs,W,H,ymin,ymax){
+  const px=PAD.l+(xs/(1))*(W-PAD.l-PAD.r);
+  ctx.save();ctx.strokeStyle='rgba(183,28,28,0.55)';ctx.lineWidth=1.8;ctx.setLineDash([5,3]);
+  ctx.beginPath();ctx.moveTo(px,PAD.t);ctx.lineTo(px,H-PAD.b);ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+}
+
+// ═══════════════════════════════════════
+//  TAB: EVOLUTION
+// ═══════════════════════════════════════
+function drawEvolution(){
+  // ─ Main profile ─
+  {
+    const cv=document.getElementById('cv-main');
+    fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const ymin=-P.amp*1.3-0.2, ymax=P.amp*1.5+0.2;
+    bgFill(ctx,W,H);
+    const sf=document.getElementById('tog-fill').checked;
+    if(document.getElementById('tog-init').checked) plotLine(ctx,u0,W,H,ymin,ymax,'#7a96a8',1.2,[4,4],false);
+    const postShockNow = isFinite(tStar) && t > tStar + 0.01;
+    if(document.getElementById('tog-exact').checked && !postShockNow)
+      plotLine(ctx,uExact,W,H,ymin,ymax,'#1255a0',2.5,[],sf);
+    if(document.getElementById('tog-visc').checked) plotLine(ctx,uVisc,W,H,ymin,ymax,'#1a7a3c',1.6,[],false);
+    if(document.getElementById('tog-num').checked) plotLine(ctx,uNum,W,H,ymin,ymax,'#c8370a',2.1,[6,4],false);
+    const sh=detectShock(uNum);
+    if(document.getElementById('tog-shock').checked&&sh.active) vShockLine(ctx,sh.x,W,H,ymin,ymax);
+    drawAxes(ctx,W,H,ymin,ymax,'u');
+    // labels
+    ctx.fillStyle='#1255a0';ctx.font='bold 11px JetBrains Mono,monospace';
+    ctx.fillText(`t = ${t.toFixed(3)}`,W-PAD.r-90,PAD.t+15);
+    if(isFinite(tStar)){
+      ctx.fillStyle='#b71c1c';ctx.font='10px JetBrains Mono,monospace';
+      ctx.fillText(`t* = ${tStar.toFixed(3)}`,PAD.l+6,PAD.t+15);
+    }
+    // post-shock: exact solution is multi-valued — suppress it and explain
+    if(postShockNow){
+      ctx.save();
+      ctx.fillStyle='rgba(183,28,28,0.82)';
+      ctx.font='italic 10.5px Lora,serif';
+      ctx.fillText('exact (characteristics) suppressed post-shock  —  use numerical solution',PAD.l+5,H-PAD.b-8);
+      ctx.restore();
+    }
+  }
+  // ─ Gradient / du/dx ─
+  {
+    const cv=document.getElementById('cv-grad');
+    fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const grad=new Array(P.N);
+    for(let j=0;j<P.N;j++) grad[j]=(uNum[(j+1)%P.N]-uNum[j])/dx;
+    const gmax=Math.max(...grad.map(Math.abs),0.5);
+    const ymin=-gmax*1.1, ymax=gmax*1.1;
+    bgFill(ctx,W,H);
+    // shade negative gradient (steepening region)
+    ctx.save();
+    const plotW=W-PAD.l-PAD.r, plotH=H-PAD.t-PAD.b;
+    grad.forEach((v,i)=>{
+      if(v>=0) return;
+      const px=PAD.l+(i/(P.N-1))*plotW;
+      const alpha=Math.min(0.35,Math.abs(v)/gmax*0.5);
+      ctx.fillStyle=`rgba(183,28,28,${alpha})`;
+      ctx.fillRect(px-1,PAD.t,2,plotH);
+    });
+    ctx.restore();
+    // initial gradient
+    const grad0=new Array(P.N);
+    for(let j=0;j<P.N;j++) grad0[j]=(u0[(j+1)%P.N]-u0[j])/dx;
+    plotLine(ctx,grad0,W,H,ymin,ymax,'#7a96a8',1,[4,3],false);
+    plotLine(ctx,grad,W,H,ymin,ymax,'#c8370a',2,[],false);
+    const sh=detectShock(uNum);
+    if(document.getElementById('tog-shock').checked&&sh.active) vShockLine(ctx,sh.x,W,H,ymin,ymax);
+    drawAxes(ctx,W,H,ymin,ymax,'du/dx');
+    ctx.fillStyle='#c8370a';ctx.font='bold 10px JetBrains Mono,monospace';
+    const minG=Math.min(...grad).toFixed(1);
+    ctx.fillText(`min = ${minG}`,W-PAD.r-80,PAD.t+14);
+  }
+}
+
+// ═══════════════════════════════════════
+//  TAB: x-t SPACETIME
+// ═══════════════════════════════════════
+function drawXT(){
+  const cv=document.getElementById('cv-xt');
+  fitCanvas(cv);
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const p={l:50,r:22,t:22,b:40};
+  const pW=W-p.l-p.r, pH=H-p.t-p.b;
+  ctx.fillStyle='#f5faff';ctx.fillRect(0,0,W,H);
+
+  // ── Heatmap ──
+  if(xtSnapshots.length>1){
+    const tMax=P.tmax;
+    // Build offscreen ImageData
+    const img=ctx.createImageData(pW,pH);
+    xtSnapshots.forEach(snap=>{
+      const ry=1-snap.t/tMax;
+      const py=Math.floor(ry*pH);
+      if(py<0||py>=pH) return;
+      for(let j=0;j<P.N;j++){
+        const px=Math.floor((j/P.N)*pW);
+        if(px<0||px>=pW) continue;
+        const vn=Math.max(-1,Math.min(1,snap.u[j]/maxAbsU0));
+        const idx=(py*pW+px)*4;
+        if(vn>=0){
+          img.data[idx]  =Math.round(255*(1-vn*0.85));
+          img.data[idx+1]=Math.round(255*(1-vn*0.55));
+          img.data[idx+2]=255;
+        } else {
+          img.data[idx]  =255;
+          img.data[idx+1]=Math.round(255*(1+vn*0.85));
+          img.data[idx+2]=Math.round(255*(1+vn*0.85));
+        }
+        img.data[idx+3]=230;
+      }
+    });
+    ctx.putImageData(img,p.l,p.t);
+  }
+
+  // ── Characteristic lines from u0 ──
+  const nChar=60;
+  ctx.save();
+  for(let k=0;k<nChar;k++){
+    const x0=k/nChar;
+    const u0v=interpU0(x0);
+    const vn=Math.max(-1,Math.min(1,u0v/maxAbsU0));
+    let r,g,b;
+    if(vn>=0){r=Math.round(255*(1-vn*0.9));g=Math.round(255*(1-vn*0.6));b=255;}
+    else{r=255;g=Math.round(255*(1+vn*0.9));b=Math.round(255*(1+vn*0.9));}
+    ctx.strokeStyle=`rgba(${r},${g},${b},0.55)`;ctx.lineWidth=0.75;
+    ctx.beginPath();
+    let prev=null;
+    for(let ti=0;ti<=120;ti++){
+      const tv=ti/120*P.tmax;
+      const xv=((x0+u0v*tv)%1+1)%1;
+      const px=p.l+xv*pW, py=p.t+pH-tv/P.tmax*pH;
+      if(prev===null||Math.abs(xv-prev)>0.4) ctx.moveTo(px,py);
+      else ctx.lineTo(px,py);
+      prev=xv;
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ── User-clicked highlighted characteristics ──
+  xtUserChars.forEach((cl,ci)=>{
+    const col=`hsl(${ci*60+200},80%,35%)`;
+    ctx.strokeStyle=col;ctx.lineWidth=2.3;
+    ctx.beginPath();
+    let prev=null;
+    for(let ti=0;ti<=200;ti++){
+      const tv=ti/200*P.tmax;
+      const xv=((cl.x0+cl.u0v*tv)%1+1)%1;
+      const px=p.l+xv*pW, py=p.t+pH-tv/P.tmax*pH;
+      if(prev===null||Math.abs(xv-prev)>0.4) ctx.moveTo(px,py);
+      else ctx.lineTo(px,py);
+      prev=xv;
+    }
+    ctx.stroke();
+    ctx.fillStyle=col;ctx.beginPath();
+    ctx.arc(p.l+cl.x0*pW,p.t+pH,5,0,2*Math.PI);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();
+    ctx.arc(p.l+cl.x0*pW,p.t+pH,2.5,0,2*Math.PI);ctx.fill();
+  });
+
+  // ── t* horizontal line ──
+  if(isFinite(tStar)&&tStar<=P.tmax){
+    const py=p.t+pH-tStar/P.tmax*pH;
+    ctx.strokeStyle='#b71c1c';ctx.lineWidth=1.8;ctx.setLineDash([5,3]);
+    ctx.beginPath();ctx.moveTo(p.l,py);ctx.lineTo(W-p.r,py);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#b71c1c';ctx.font='bold 10px JetBrains Mono,monospace';
+    ctx.fillText(`t* = ${tStar.toFixed(2)}`,W-p.r-65,py-4);
+  }
+
+  // ── Current time line ──
+  {
+    const py=p.t+pH-t/P.tmax*pH;
+    ctx.strokeStyle='#c8370a';ctx.lineWidth=2;ctx.setLineDash([8,4]);
+    ctx.beginPath();ctx.moveTo(p.l,py);ctx.lineTo(W-p.r,py);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#c8370a';ctx.font='bold 10px JetBrains Mono,monospace';
+    ctx.fillText(`t = ${t.toFixed(2)}`,p.l+4,py-5);
+  }
+
+  // ── Shock trajectory from history ──
+  if(shockHistory.length>1){
+    ctx.save();ctx.strokeStyle='rgba(183,28,28,0.9)';ctx.lineWidth=2.5;
+    ctx.beginPath();
+    shockHistory.forEach((sh,i)=>{
+      const px=p.l+sh.x*pW, py=p.t+pH-sh.t/P.tmax*pH;
+      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    });
+    ctx.stroke();ctx.restore();
+  }
+
+  // ── Colorbar legend ──
+  const cbX=W-p.r-12, cbY=p.t+10, cbH=pH*0.4, cbW=10;
+  for(let i=0;i<cbH;i++){
+    const vn=1-2*i/cbH;
+    let r,g,b;
+    if(vn>=0){r=Math.round(255*(1-vn*0.9));g=Math.round(255*(1-vn*0.6));b=255;}
+    else{r=255;g=Math.round(255*(1+vn*0.9));b=Math.round(255*(1+vn*0.9));}
+    ctx.fillStyle=`rgb(${r},${g},${b})`;
+    ctx.fillRect(cbX,cbY+i,cbW,1);
+  }
+  ctx.strokeStyle='#9ab';ctx.lineWidth=0.5;ctx.strokeRect(cbX,cbY,cbW,cbH);
+  ctx.fillStyle='#456';ctx.font='9px JetBrains Mono,monospace';
+  ctx.fillText(`+${maxAbsU0.toFixed(1)}`,cbX-2,cbY+8);
+  ctx.fillText(`0`,cbX+1,cbY+cbH/2+4);
+  ctx.fillText(`−${maxAbsU0.toFixed(1)}`,cbX-6,cbY+cbH-2);
+
+  // ── Axes ──
+  ctx.strokeStyle='#9ab';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(p.l,p.t);ctx.lineTo(p.l,H-p.b);ctx.lineTo(W-p.r,H-p.b);ctx.stroke();
+  ctx.fillStyle='#567';ctx.font='10px JetBrains Mono,monospace';
+  [0,.25,.5,.75,1].forEach(f=>{
+    const px=p.l+f*pW;
+    ctx.beginPath();ctx.moveTo(px,H-p.b);ctx.lineTo(px,H-p.b+4);ctx.stroke();
+    ctx.fillText(f.toFixed(2),px-14,H-p.b+14);
+  });
+  [0,.25,.5,.75,1].forEach(f=>{
+    const tv=f*P.tmax, py=p.t+pH*(1-f);
+    ctx.beginPath();ctx.moveTo(p.l-3,py);ctx.lineTo(p.l,py);ctx.stroke();
+    ctx.fillText(tv.toFixed(1),1,py+3.5);
+  });
+  ctx.fillStyle='#445';ctx.font='11px Lora,serif';
+  ctx.fillText('x',W/2,H-2);
+  ctx.save();ctx.translate(12,H/2);ctx.rotate(-Math.PI/2);ctx.fillText('t',0,0);ctx.restore();
+  ctx.fillStyle='#1255a0';ctx.font='10px Lora,serif';
+  ctx.fillText('Click to add characteristic',p.l+6,p.t+14);
+}
+
+// ═══════════════════════════════════════
+//  TAB: SHOCK ANALYTICS
+// ═══════════════════════════════════════
+function drawShockAnalytics(){
+  // Panel 1: shock position x_s(t)
+  {
+    const cv=document.getElementById('cv-shockpos');
+    fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    bgFill(ctx,W,H);
+    drawAxes(ctx,W,H,0,1,'x');
+    if(shockHistory.length<2){
+      ctx.fillStyle='#9ab';ctx.font='italic 13px Lora,serif';
+      ctx.fillText('Shock not yet formed — play to see',PAD.l+20,H/2);
+    } else {
+      // plot x_s vs t
+      ctx.save();ctx.strokeStyle='#b71c1c';ctx.lineWidth=2.5;
+      ctx.beginPath();
+      shockHistory.forEach((sh,i)=>{
+        const px=PAD.l+(sh.t/P.tmax)*(W-PAD.l-PAD.r);
+        const py=H-PAD.b-(sh.x/1)*(H-PAD.t-PAD.b);
+        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      });
+      ctx.stroke();ctx.restore();
+      // current marker
+      if(shockHistory.length>0){
+        const last=shockHistory[shockHistory.length-1];
+        const px=PAD.l+(last.t/P.tmax)*(W-PAD.l-PAD.r);
+        const py=H-PAD.b-(last.x/1)*(H-PAD.t-PAD.b);
+        ctx.fillStyle='#b71c1c';ctx.beginPath();ctx.arc(px,py,5,0,2*Math.PI);ctx.fill();
+      }
+      // relabel x-axis as t
+      ctx.fillStyle='#445';ctx.font='11px Lora,serif';ctx.fillText('t',W/2,H-1);
+    }
+    // t* marker on x-axis
+    if(isFinite(tStar)){
+      const px=PAD.l+(tStar/P.tmax)*(W-PAD.l-PAD.r);
+      if(px>PAD.l&&px<W-PAD.r){
+        ctx.strokeStyle='rgba(183,28,28,0.6)';ctx.lineWidth=1.2;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.moveTo(px,PAD.t);ctx.lineTo(px,H-PAD.b);ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle='#b71c1c';ctx.font='9px JetBrains Mono,monospace';
+        ctx.fillText('t*',px+2,PAD.t+12);
+      }
+    }
+  }
+  // Panel 2: u_L, u_R, shock speed
+  {
+    const cv=document.getElementById('cv-shockspd');
+    fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const allVals=shockHistory.flatMap(s=>[s.uL,s.uR,s.speed]);
+    const ymin=allVals.length?Math.min(...allVals)*1.15-0.3:-1.5;
+    const ymax=allVals.length?Math.max(...allVals)*1.15+0.3:1.5;
+    bgFill(ctx,W,H);
+    drawAxes(ctx,W,H,ymin,ymax,'u');
+    if(shockHistory.length<2){
+      ctx.fillStyle='#9ab';ctx.font='italic 13px Lora,serif';
+      ctx.fillText('Shock not yet formed',PAD.l+20,H/2);
+    } else {
+      const pW=W-PAD.l-PAD.r;
+      ['uL','uR','speed'].forEach((key,ki)=>{
+        const colors=['#1255a0','#c8370a','#6a1b9a'];
+        const dashes=[[],[4,3],[]];
+        ctx.save();ctx.strokeStyle=colors[ki];ctx.lineWidth=1.8;ctx.setLineDash(dashes[ki]);
+        ctx.beginPath();
+        shockHistory.forEach((sh,i)=>{
+          const px=PAD.l+(sh.t/P.tmax)*pW;
+          const py=H-PAD.b-(sh[key]-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);
+          i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+        });
+        ctx.stroke();ctx.restore();
+      });
+      // legend
+      ctx.fillStyle='#445';ctx.font='11px Lora,serif';ctx.fillText('t',W/2,H-1);
+      const lx=W-PAD.r-95,ly=PAD.t+12;
+      [['u_L','#1255a0',[]],['u_R','#c8370a',[4,3]],['s=(u_L+u_R)/2','#6a1b9a',[]]].forEach((it,i)=>{
+        ctx.strokeStyle=it[1];ctx.lineWidth=1.8;ctx.setLineDash(it[2]);
+        ctx.beginPath();ctx.moveTo(lx,ly+i*17);ctx.lineTo(lx+16,ly+i*17);ctx.stroke();
+        ctx.setLineDash([]);ctx.fillStyle='#334';ctx.font='10px Lora,serif';
+        ctx.fillText(it[0],lx+20,ly+i*17+4);
+      });
+      // R-H annotation
+      const last=shockHistory[shockHistory.length-1];
+      const s=last.speed.toFixed(3);
+      ctx.fillStyle='#6a1b9a';ctx.font='10px JetBrains Mono,monospace';
+      ctx.fillText(`s = ${s}`,PAD.l+4,PAD.t+14);
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+//  TAB: PDE COMPARISON
+// ═══════════════════════════════════════
+function drawComparison(){
+  // Exact transport solution: u(x,t) = u0(x - c*t), computed analytically
+  // Use maxAbsU0 as the representative wave speed so it visibly shifts
+  const uTransportExact = Array.from({length:P.N}, (_,j) => interpU0(j*dx - maxAbsU0*t));
+
+  const sets=[
+    {id:'cv-cmp-tr', u:uTransportExact, color:'#2e7d32', label:`Transport  c=${maxAbsU0.toFixed(2)}`},
+    {id:'cv-cmp-bu', u:uNum,            color:'#c8370a', label:'Inv. Burgers'},
+    {id:'cv-cmp-vb', u:uVisc,           color:'#1255a0', label:'Viscous Burgers'},
+  ];
+  sets.forEach(it=>{
+    const cv=document.getElementById(it.id);
+    fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const ymin=-P.amp*1.35-0.2, ymax=P.amp*1.6+0.2;
+    bgFill(ctx,W,H);
+    plotLine(ctx,u0,W,H,ymin,ymax,'#7a96a8',1.1,[4,3],false);
+    plotLine(ctx,it.u,W,H,ymin,ymax,it.color,2.4,[],true);
+    const sh=detectShock(it.u);
+    if(sh.active) vShockLine(ctx,sh.x,W,H,ymin,ymax);
+    drawAxes(ctx,W,H,ymin,ymax,'u');
+    ctx.fillStyle=it.color;ctx.font='bold 11px JetBrains Mono,monospace';
+    ctx.fillText(`t = ${t.toFixed(3)}`,W-PAD.r-90,PAD.t+14);
+    ctx.fillStyle='#334';ctx.font='11px Lora,serif';
+    ctx.fillText(it.label,PAD.l+5,PAD.t+14);
+  });
+}
+
+// ═══════════════════════════════════════
+//  LEGEND CANVAS
+// ═══════════════════════════════════════
+function drawLegend(){
+  const cv=document.getElementById('cv-legend');
+  if(!cv) return;
+  const items=[
+    {color:'#1255a0', dash:[],      lw:2.5, label:'Exact (pre-shock)'},
+    {color:'#c8370a', dash:[6,4],   lw:2.1, label:'Numerical'},
+    {color:'#1a7a3c', dash:[],      lw:1.8, label:'Viscous Burgers'},
+    {color:'#7a96a8', dash:[4,3],   lw:1.2, label:'Initial'},
+    {color:'#b71c1c', dash:[5,3],   lw:1.8, label:'Shock position'},
+  ];
+  const H=22, itemW=130, pad=6;
+  cv.width=items.length*itemW+pad;
+  cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,H);
+  ctx.font='11px Lora,serif';
+  items.forEach((it,i)=>{
+    const ox=i*itemW+pad;
+    const cy=H/2;
+    ctx.save();
+    ctx.strokeStyle=it.color; ctx.lineWidth=it.lw; ctx.setLineDash(it.dash);
+    ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(ox,cy); ctx.lineTo(ox+22,cy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#334';
+    ctx.fillText(it.label, ox+26, cy+4);
+    ctx.restore();
+  });
+}
+
+
+function redraw(){
+  drawLegend();
+  switch(curTab){
+    case 'evo':   drawEvolution();     break;
+    case 'xt':    drawXT();            break;
+    case 'shock': drawShockAnalytics();break;
+    case 'cmp':   drawComparison();    break;
+  }
+}
+
+// ═══════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════
+function switchTab(tab,btn){
+  curTab=tab;
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['evo','xt','shock','cmp'].forEach(id=>{
+    const el=document.getElementById(`tab-${id}`);
+    if(el) el.style.display=id===tab?'flex':'none';
+  });
+  setTimeout(redraw,30);
+}
+
+// x-t click handler
+document.getElementById('cv-xt').addEventListener('click',function(e){
+  const r=this.getBoundingClientRect();
+  const p={l:50,r:22,t:22,b:40};
+  const W=this.width,H=this.height;
+  const mx=(e.clientX-r.left)*(W/r.width);
+  const my=(e.clientY-r.top)*(H/r.height);
+  const x=(mx-p.l)/(W-p.l-p.r);
+  const tv=(1-(my-p.t)/(H-p.t-p.b))*P.tmax;
+  if(x>=0&&x<=1){
+    // Properly invert x = x0 + u0(x0)*tv via Newton's method (same as computeExact)
+    let x0=x;
+    for(let it=0;it<60;it++){
+      const v=interpU0(x0);
+      const F=x0+v*tv-x;
+      const vp=(interpU0(x0+1e-6)-interpU0(x0-1e-6))*5e5;
+      const dF=1+vp*tv;
+      if(Math.abs(dF)<1e-11) break;
+      const step=-F/dF;
+      x0+=step;
+      if(Math.abs(step)<1e-10) break;
+    }
+    x0=((x0%1)+1)%1;
+    xtUserChars.push({x0, u0v:interpU0(x0)});
+    if(xtUserChars.length>7) xtUserChars.shift();
+    drawXT();
+  }
+});
+
+// ═══════════════════════════════════════
+//  PARAM UPDATERS
+// ═══════════════════════════════════════
+function upAmp(v){P.amp=parseFloat(v);document.getElementById('val-amp').textContent=P.amp.toFixed(1);resetSim();}
+function upSig(v){P.sigma=parseFloat(v);document.getElementById('val-sig').textContent=P.sigma.toFixed(2);resetSim();}
+function upN(v){P.N=parseInt(v);document.getElementById('val-N').textContent=P.N;resetSim();}
+function upCFL(v){P.cfl=parseFloat(v);document.getElementById('val-cfl').textContent=P.cfl.toFixed(2);computeGrid();updateStatus();redraw();}
+function upEps(v){P.eps=parseFloat(v);document.getElementById('val-eps').textContent=P.eps.toFixed(3);resetSim();}
+function upSpd(v){P.speed=parseFloat(v);document.getElementById('val-spd').textContent=P.speed.toFixed(1);}
+function upTmax(v){P.tmax=parseFloat(v);document.getElementById('val-tmax').textContent=P.tmax.toFixed(1);shockHistory=[];xtSnapshots=[];lastSnapT=-Infinity;if(t>P.tmax){t=0;postShock=false;uNum=[...u0];uVisc=[...u0];uTransport=[...u0];}redraw();}
+
+// ═══════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  if(e.key===' '){e.preventDefault();togglePlay();}
+  if(e.key==='ArrowRight') stepFwd();
+  if(e.key==='r'||e.key==='R') resetSim();
+});
+
+// ═══════════════════════════════════════
+//  RESIZE
+// ═══════════════════════════════════════
+let rzTimer;
+window.addEventListener('resize',()=>{clearTimeout(rzTimer);rzTimer=setTimeout(()=>redraw(),80);});
+
+// ═══════════════════════════════════════
+//  HELP MODAL
+// ═══════════════════════════════════════
+const HELP=[
+  {title:'What Is It?', html:`
+    <h3>The Inviscid Burgers Equation</h3>
+    <p>The <strong>inviscid Burgers equation</strong> is the simplest nonlinear hyperbolic conservation law:</p>
+    <div class="mbox">\\(u_t + u\\,u_x = 0\\)</div>
+    <p>In <strong>conservation form</strong> (flux form), writing the flux \\(f(u) = u^2/2\\):</p>
+    <div class="mbox">\\(u_t + \\partial_x\\!\\left(\\tfrac{u^2}{2}\\right) = 0\\)</div>
+    <p>It looks like the transport equation \\(u_t + c\\,u_x = 0\\) except the wave speed is \\(c = u\\) — the <em>solution itself</em> determines how fast it travels. This single nonlinear coupling causes fundamentally new behavior: <strong>wave steepening</strong>, <strong>shock formation</strong>, and <strong>rarefaction fans</strong>.</p>
+    <p>It arises as a model in gas dynamics, traffic flow, and as a component of the Navier-Stokes equations (after dropping pressure and viscosity terms).</p>
+  `},
+  {title:'Characteristics', html:`
+    <h3>Nonlinear Characteristics</h3>
+    <p>The method of characteristics gives:</p>
+    <div class="mbox">\\(\\frac{dx}{dt} = u,\\quad \\frac{du}{dt} = 0\\)</div>
+    <p>So \\(u\\) is constant on each characteristic, but unlike transport, the characteristics are <em>not parallel</em> — each one travels at a different speed \\(u_0(x_0)\\):</p>
+    <div class="mbox">\\(x(t) = x_0 + u_0(x_0)\\,t,\\qquad u(x,t) = u_0(x_0)\\)</div>
+    <p>This gives an <strong>implicit exact solution</strong>: given \\((x,t)\\), find \\(x_0\\) such that \\(x_0 + u_0(x_0)\\,t = x\\), then \\(u = u_0(x_0)\\). The app solves this via Newton's method.</p>
+    <div class="abox">In the x–t diagram tab, characteristics are colored by their \\(u_0\\) value (blue = fast, red = slow/negative). Where fast characteristics <em>catch up</em> to slow ones, they <em>cross</em> — signalling shock formation.</div>
+    <p>This crossing is exactly what makes the solution <strong>multi-valued</strong> past the shock time \\(t^*\\), requiring the physical entropy solution.</p>
+  `},
+  {title:'Shock Formation', html:`
+    <h3>Wave Steepening & Shock Formation</h3>
+    <p>Faster-moving parts of the wave overtake slower ones, steepening the profile until a discontinuity (shock) forms at the <strong>critical time</strong>:</p>
+    <div class="mbox">\\(t^* = \\frac{-1}{\\min_x\\, u_0'(x)}\\)</div>
+    <p>This is the earliest time at which characteristics cross. For a sine wave \\(u_0 = A\\sin(2\\pi x)\\):</p>
+    <div class="mbox">\\(t^* = \\frac{1}{2\\pi A}\\)</div>
+    <p>In the <em>Gradient</em> panel (Evolution tab), you can watch the gradient \\(\\partial u/\\partial x\\) steepen toward \\(-\\infty\\) as \\(t \\to t^*\\). The red shading highlights the steepening region.</p>
+    <div class="rbox"><strong>Post-shock:</strong> The exact characteristics solution becomes multi-valued and unphysical. The correct physical solution is selected by the <strong>entropy condition</strong> (Lax entropy condition: characteristics must <em>enter</em> the shock, not leave it).</div>
+  `},
+  {title:'Rankine-Hugoniot', html:`
+    <h3>Rankine-Hugoniot Jump Condition</h3>
+    <p>At a shock discontinuity, the shock speed \\(s\\) is constrained by conservation of mass. Integrating the conservation law across the shock gives the <strong>Rankine-Hugoniot condition</strong>:</p>
+    <div class="mbox">\\(s = \\frac{[f(u)]}{[u]} = \\frac{u_L^2/2 - u_R^2/2}{u_L - u_R} = \\frac{u_L + u_R}{2}\\)</div>
+    <p>where \\(u_L\\) and \\(u_R\\) are the left and right states at the shock. The <em>Shock Analytics</em> tab tracks \\(u_L(t)\\), \\(u_R(t)\\), and the live Rankine-Hugoniot speed \\(s(t)\\).</p>
+    <p>The <strong>Lax entropy condition</strong> requires that characteristics run <em>into</em> the shock:</p>
+    <div class="mbox">\\(u_L > s > u_R\\)</div>
+    <p>This is satisfied when \\(u_L > u_R\\). If \\(u_L < u_R\\), a rarefaction wave forms instead.</p>
+    <div class="abox">Try the <em>Step → Shock</em> and <em>Step → Rarefaction</em> initial conditions to observe both phenomena from a Riemann problem.</div>
+  `},
+  {title:'Rarefaction Waves', html:`
+    <h3>Rarefaction Waves & the Entropy Solution</h3>
+    <p>When the initial data has \\(u_L < u_R\\) (e.g., a step up), characteristics <em>spread apart</em> creating a <strong>rarefaction fan</strong>. The entropy solution is a centered fan:</p>
+    <div class="mbox">\\(u(x,t) = \\begin{cases} u_L & x < u_L t \\\\ x/t & u_L t \\leq x \\leq u_R t \\\\ u_R & x > u_R t \\end{cases}\\)</div>
+    <p>The Godunov scheme automatically handles both cases through its flux function:</p>
+    <ul>
+      <li><strong>Shock</strong> (\\(u_L > u_R\\)): upwind flux based on Rankine-Hugoniot speed \\(s = (u_L+u_R)/2\\)</li>
+      <li><strong>Rarefaction</strong> (\\(u_L < u_R\\)): minimize \\(f(u) = u^2/2\\) over \\([u_L, u_R]\\)</li>
+    </ul>
+    <p>The Roe scheme can violate the entropy condition at sonic points (\\(u_L < 0 < u_R\\)) — it may compute an "expansion shock" instead of a rarefaction. Only Godunov is entropy-satisfying by construction.</p>
+  `},
+  {title:'Numerical Schemes', html:`
+    <h3>Numerical Methods for Conservation Laws</h3>
+    <p>All schemes work on the conservation form \\(u_t + f_x = 0\\) with \\(f = u^2/2\\):</p>
+    <div class="mbox">\\(u_j^{n+1} = u_j^n - \\frac{\\Delta t}{\\Delta x}\\bigl(F_{j+1/2} - F_{j-1/2}\\bigr)\\)</div>
+    <table class="itable">
+      <tr><th>Scheme</th><th>Flux \\(F_{j+1/2}\\)</th><th>Order</th></tr>
+      <tr><td><strong>Godunov</strong></td><td>Exact Riemann solution</td><td>1st (entropy-safe)</td></tr>
+      <tr><td><strong>Lax-Wendroff</strong></td><td>Centered + \\(O(\\Delta t)\\) correction</td><td>2nd (may oscillate)</td></tr>
+      <tr><td><strong>Lax-Friedrichs</strong></td><td>\\(\\tfrac{1}{2}(f_L+f_R) - \\tfrac{\\Delta x}{2\\Delta t}(u_R-u_L)\\)</td><td>1st (diffusive)</td></tr>
+      <tr><td><strong>Roe</strong></td><td>Upwind with Roe average \\(\\tilde{a}=(u_L+u_R)/2\\)</td><td>1st (entropy fix needed)</td></tr>
+    </table>
+    <p>The <strong>CFL condition</strong> for Burgers: \\(\\nu = \\max|u|\\cdot\\Delta t/\\Delta x \\leq 1\\). The app computes \\(\\Delta t\\) automatically from \\(\\max|u_0|\\).</p>
+    <p>Add small <strong>viscosity \\(\\varepsilon\\)</strong> (viscous Burgers) to see how the shock is regularized into a smooth transition layer of width \\(\\sim \\varepsilon\\).</p>
+  `},
+];
+
+let curSection=0;
+function buildNav(){
+  const nav=document.getElementById('mnav');nav.innerHTML='';
+  HELP.forEach((s,i)=>{
+    const b=document.createElement('button');
+    b.className='mnbtn'+(i===0?' active':'');b.textContent=s.title;
+    b.onclick=()=>showSection(i);nav.appendChild(b);
+  });
+}
+function showSection(i){
+  curSection=i;
+  document.querySelectorAll('.mnbtn').forEach((b,j)=>b.classList.toggle('active',j===i));
+  const body=document.getElementById('mbody');
+  body.innerHTML=HELP[i].html;
+  if(window.renderMathInElement) renderMathInElement(body,{delimiters:[{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]});
+}
+function openHelp(){buildNav();showSection(0);document.getElementById('help-modal').classList.add('open');}
+function closeHelp(){document.getElementById('help-modal').classList.remove('open');}
+document.getElementById('help-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeHelp();});
+
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+window.addEventListener('load',()=>{
+  document.querySelectorAll('canvas').forEach(cv=>{
+    const r=cv.parentElement.getBoundingClientRect();
+    cv.width=Math.max(r.width,60); cv.height=Math.max(r.height,60);
+  });
+  resetSim();
+});
+</script>
+</body>
+</html>

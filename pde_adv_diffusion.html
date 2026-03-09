@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advection–Diffusion Equation Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+:root{
+  --bg:#e0f7fa; --bg2:#edfcfd; --card:#ffffff;
+  --border:#80deea; --accent:#00838f; --accent2:#26c6da;
+  --text:#00232a; --text2:#1a5c66;
+  --col-exact:#00838f; --col-num:#e65100; --col-diff:#6a1b9a; --col-adv:#1565c0; --col-init:#78909c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Source Serif 4',Georgia,serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.katex,.katex *{box-sizing:content-box !important}
+.katex .mopen,.katex .mclose,.katex .mord,.katex .mbin,.katex .mrel,.katex .mop,.katex .mpunct{color:inherit !important}
+header{background:var(--accent);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,.22);flex-shrink:0}
+header h1{font-size:1.28rem;font-weight:600}
+.subtitle{font-style:italic;opacity:.82;font-size:.86rem;margin-left:12px;font-family:'JetBrains Mono',monospace}
+.app-body{display:flex;flex:1;min-height:0}
+.sidebar{width:252px;flex-shrink:0;background:var(--bg2);border-right:1.5px solid var(--border);padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:9px}
+.cfg{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.cfg h3{font-size:.69rem;text-transform:uppercase;letter-spacing:1.1px;color:var(--accent);margin-bottom:8px;font-family:'JetBrains Mono',monospace;font-weight:500}
+.param{margin-bottom:8px}
+.param label{display:flex;justify-content:space-between;font-size:.84rem;color:var(--text2);margin-bottom:3px}
+.param label span{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--accent);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;height:18px}
+select{width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text);cursor:pointer}
+.trow{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;color:var(--text2);margin-bottom:5px}
+.tog{position:relative;width:34px;height:19px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.ts{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s}
+.ts::before{content:'';position:absolute;width:13px;height:13px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s}
+.tog input:checked+.ts{background:var(--accent2)}
+.tog input:checked+.ts::before{transform:translateX(15px)}
+.live-stat{font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--text2);line-height:2.1}
+.live-stat .sv{color:var(--accent);font-weight:500}
+.main{flex:1;display:flex;flex-direction:column;padding:12px;gap:10px;min-height:0;overflow:hidden}
+.tabs{display:flex;gap:3px;flex-shrink:0}
+.tbtn{padding:6px 15px;border:1px solid var(--border);border-radius:6px 6px 0 0;background:var(--bg2);color:var(--text2);cursor:pointer;font-family:'Source Serif 4',serif;font-size:.9rem;transition:all .2s;border-bottom:none}
+.tbtn.active{background:var(--card);color:var(--accent);font-weight:600;position:relative;top:1px}
+.canvas-container{background:var(--card);border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:12px;flex:1;display:flex;flex-direction:column;gap:10px;min-height:0}
+.ctrl-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;flex-shrink:0}
+.btn{padding:5px 14px;border:none;border-radius:6px;cursor:pointer;font-family:'Source Serif 4',serif;font-size:.9rem;font-weight:600;transition:all .18s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#006064}
+.btn-sec{background:var(--bg2);color:var(--text);border:1px solid var(--border)}
+.btn-sec:hover{background:var(--border)}
+.btn-rst{background:#e0f7fa;color:#006064;border:1px solid #80deea}
+.btn-rst:hover{background:#b2ebf2}
+.btn-hlp{background:#fff8e1;color:#b85c00;border:1px solid #ffe082}
+.btn-hlp:hover{background:#ffe082}
+.tdisplay{font-family:'JetBrains Mono',monospace;font-size:.83rem;color:var(--text2);margin-left:auto}
+.badge{font-family:'JetBrains Mono',monospace;font-size:.75rem;padding:3px 8px;border-radius:12px;border:1px solid;transition:all .3s}
+.b-ok{background:#e0f7fa;color:#00838f;border-color:#80deea}
+.b-warn{background:#fff8e1;color:#b85c00;border-color:#ffe082}
+.b-bad{background:#ffebee;color:#b71c1c;border-color:#ef9a9a;animation:pulse .7s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.6}to{opacity:1}}
+.crow{display:flex;gap:10px;flex:1;min-height:0}
+.cwrap{flex:1;position:relative;background:#f0fcfd;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.cwrap canvas{width:100%;height:100%;display:block}
+.clabel{position:absolute;top:7px;left:10px;font-size:.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;pointer-events:none;background:rgba(255,255,255,.9);padding:2px 7px;border-radius:4px;border:1px solid var(--border)}
+.sbar{background:var(--bg2);border-top:1.5px solid var(--border);padding:3px 16px;font-size:.73rem;color:var(--text2);font-family:'JetBrains Mono',monospace;display:flex;gap:16px;flex-shrink:0;flex-wrap:wrap}
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.moverlay.open{display:flex}
+.modal{background:var(--card);border-radius:12px;max-width:700px;width:93%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 12px 55px rgba(0,0,0,.3);overflow:hidden}
+.mhdr{background:var(--accent);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+.mhdr h2{font-size:1.07rem}
+.mclose{background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;opacity:.8;line-height:1}
+.mclose:hover{opacity:1}
+.mnav{display:flex;gap:3px;padding:8px 14px;background:#edfcfd;border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.mnbtn{padding:4px 11px;border:1px solid var(--border);border-radius:14px;background:#fff;font-size:.79rem;cursor:pointer;white-space:nowrap;transition:all .18s;font-family:'Source Serif 4',serif}
+.mnbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mbody{flex:1;padding:18px 22px;overflow-y:auto;line-height:1.78;font-size:.95rem}
+.mbody h3{color:var(--accent);font-size:1.05rem;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.mbody p{margin-bottom:10px}
+.mbody ul{padding-left:20px;margin-bottom:10px}
+.mbody li{margin-bottom:5px}
+.mbox{text-align:center;padding:11px;background:#e0f7fa;border:1px solid var(--border);border-radius:6px;margin:10px 0;font-size:1.02rem}
+.abox{background:#e0f7fa;border-left:4px solid var(--accent2);padding:10px 14px;border-radius:0 6px 6px 0;margin:10px 0;font-style:italic}
+.itable{width:100%;border-collapse:collapse;font-size:.86rem;margin:10px 0}
+.itable th{background:var(--accent);color:#fff;padding:7px 10px;text-align:left}
+.itable td{padding:6px 10px;border-bottom:1px solid var(--border)}
+.itable tr:nth-child(even) td{background:#edfcfd}
+code{font-family:'JetBrains Mono',monospace;font-size:.83em;background:#e0f7fa;padding:1px 5px;border-radius:3px;color:var(--accent)}
+.mlink{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent2)}
+.mlink:hover{color:#006064}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:1.5rem">💨</span>
+    <h1>Advection–Diffusion Explorer</h1>
+    <span class="subtitle">u<sub>t</sub> + c·u<sub>x</sub> = ν·u<sub>xx</sub></span>
+  </div>
+  <button class="btn btn-hlp" onclick="openHelp()">📖 Help / Theory</button>
+</header>
+<div class="app-body">
+<div class="sidebar">
+  <div class="cfg">
+    <h3>PDE Parameters</h3>
+    <div class="param">
+      <label>c (advection speed) <span id="val-c">1.00</span></label>
+      <input type="range" id="sl-c" min="-3" max="3" step="0.1" value="1.0" oninput="upC(this.value)">
+    </div>
+    <div class="param">
+      <label>ν (diffusivity) <span id="val-nu">0.005</span></label>
+      <input type="range" id="sl-nu" min="0.000" max="0.05" step="0.001" value="0.005" oninput="upNu(this.value)">
+    </div>
+    <div class="param" id="pe-row">
+      <label>Péclet Pe = c·L/ν <span id="val-pe">—</span></label>
+    </div>
+  </div>
+  <div class="cfg">
+    <h3>Initial Condition</h3>
+    <div class="param">
+      <label>Shape</label>
+      <select id="ic-sel" onchange="resetSim()">
+        <option value="gaussian" selected>Gaussian</option>
+        <option value="square">Square Pulse</option>
+        <option value="sine">Sine Mode</option>
+        <option value="double">Double Gaussian</option>
+        <option value="triangle">Triangle</option>
+      </select>
+    </div>
+    <div class="param">
+      <label>Amplitude A <span id="val-amp">1.0</span></label>
+      <input type="range" id="sl-amp" min="0.2" max="2.0" step="0.1" value="1.0" oninput="upAmp(this.value)">
+    </div>
+    <div class="param">
+      <label>Width σ <span id="val-sig">0.08</span></label>
+      <input type="range" id="sl-sig" min="0.02" max="0.25" step="0.01" value="0.08" oninput="upSig(this.value)">
+    </div>
+  </div>
+  <div class="cfg">
+    <h3>Numerical Setup</h3>
+    <div class="param">
+      <label>Grid N <span id="val-N">300</span></label>
+      <input type="range" id="sl-N" min="100" max="600" step="50" value="300" oninput="upN(this.value)">
+    </div>
+    <div class="param">
+      <label>CFL ν_adv <span id="val-cfl">0.80</span></label>
+      <input type="range" id="sl-cfl" min="0.1" max="1.1" step="0.05" value="0.8" oninput="upCFL(this.value)">
+    </div>
+    <div class="param">
+      <label>Scheme</label>
+      <select id="sch-sel" onchange="resetSim()">
+        <option value="upwind_ftcs">Upwind + FTCS</option>
+        <option value="lax_cn">Lax-Wendroff + CN</option>
+        <option value="central_cn">Central + CN</option>
+      </select>
+    </div>
+  </div>
+  <div class="cfg">
+    <h3>Display</h3>
+    <div class="trow"><span>Exact solution</span>
+      <label class="tog"><input type="checkbox" id="tog-exact" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Numerical</span>
+      <label class="tog"><input type="checkbox" id="tog-num" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Pure diffusion only</span>
+      <label class="tog"><input type="checkbox" id="tog-diff" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Pure advection only</span>
+      <label class="tog"><input type="checkbox" id="tog-adv" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Initial profile</span>
+      <label class="tog"><input type="checkbox" id="tog-init" checked onchange="redraw()"><span class="ts"></span></label></div>
+    <div class="trow"><span>Fill under curve</span>
+      <label class="tog"><input type="checkbox" id="tog-fill" checked onchange="redraw()"><span class="ts"></span></label></div>
+  </div>
+  <div class="cfg">
+    <h3>Animation</h3>
+    <div class="param">
+      <label>Speed <span id="val-spd">0.1</span>×</label>
+      <input type="range" id="sl-spd" min="0.1" max="6" step="0.1" value="0.1" oninput="upSpd(this.value)">
+    </div>
+    <div class="param">
+      <label>Loop at T <span id="val-tmax">5.0</span></label>
+      <input type="range" id="sl-tmax" min="1" max="15" step="1" value="5" oninput="upTmax(this.value)">
+    </div>
+  </div>
+  <div class="cfg">
+    <h3>Live Stats</h3>
+    <div class="live-stat">
+      <div>Péclet Pe: <span id="ls-pe" class="sv">—</span></div>
+      <div>L² error: <span id="ls-l2" class="sv">—</span></div>
+      <div>σ(t) spread: <span id="ls-spread" class="sv">—</span></div>
+      <div>peak center x: <span id="ls-xpeak" class="sv">—</span></div>
+      <div>∫u dx (mass): <span id="ls-mass" class="sv">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="tabs">
+    <button class="tbtn active" onclick="switchTab('evo',this)">💨 Evolution</button>
+    <button class="tbtn" onclick="switchTab('decomp',this)">🔀 Decomposition</button>
+    <button class="tbtn" onclick="switchTab('peclet',this)">📊 Péclet Regimes</button>
+    <button class="tbtn" onclick="switchTab('xt',this)">📐 x–t Diagram</button>
+  </div>
+  <div class="canvas-container">
+    <div class="ctrl-bar">
+      <button class="btn btn-primary" id="btn-play" onclick="togglePlay()">▶ Play</button>
+      <button class="btn btn-sec" onclick="stepFwd()">⏭ Step</button>
+      <button class="btn btn-rst" onclick="resetSim()">↺ Reset</button>
+      <canvas id="cv-legend" height="22" style="align-self:center;flex-shrink:0"></canvas>
+      <span class="tdisplay" id="tdisplay">t = 0.000</span>
+      <span class="badge b-ok" id="cfl-badge">CFL 0.80</span>
+      <span class="badge b-ok" id="pe-badge">Pe —</span>
+    </div>
+    <div id="tab-evo" style="display:flex;flex-direction:column;flex:1;gap:10px;min-height:0">
+      <div class="cwrap" style="flex:2">
+        <canvas id="cv-main"></canvas>
+        <div class="clabel">u(x,t) — Translation + Spreading</div>
+      </div>
+      <div class="cwrap" style="flex:1">
+        <canvas id="cv-err"></canvas>
+        <div class="clabel">|u_exact − u_numerical|</div>
+      </div>
+    </div>
+    <div id="tab-decomp" class="crow" style="display:none">
+      <div class="cwrap">
+        <canvas id="cv-decomp"></canvas>
+        <div class="clabel">Advection only vs Diffusion only vs Full Adv-Diff</div>
+      </div>
+    </div>
+    <div id="tab-peclet" class="crow" style="display:none">
+      <div class="cwrap">
+        <canvas id="cv-pe-low"></canvas>
+        <div class="clabel">Low Pe — Diffusion-dominated</div>
+      </div>
+      <div class="cwrap">
+        <canvas id="cv-pe-med"></canvas>
+        <div class="clabel">Medium Pe — Balanced</div>
+      </div>
+      <div class="cwrap">
+        <canvas id="cv-pe-hi"></canvas>
+        <div class="clabel">High Pe — Advection-dominated</div>
+      </div>
+    </div>
+    <div id="tab-xt" class="crow" style="display:none">
+      <div class="cwrap">
+        <canvas id="cv-xt"></canvas>
+        <div class="clabel">x–t Heatmap + Advection Characteristics</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="sbar">
+  <span id="sb-t">t = 0.000</span>
+  <span id="sb-pe">Pe = —</span>
+  <span id="sb-cfl">CFL = —</span>
+  <span id="sb-l2">L² = —</span>
+  <span id="sb-mass">mass = —</span>
+  <span id="sb-sch">Upwind+FTCS</span>
+</div>
+
+<div class="moverlay" id="help-modal">
+  <div class="modal">
+    <div class="mhdr">
+      <h2>📖 Advection–Diffusion — Theory & Resources</h2>
+      <button class="mclose" onclick="closeHelp()">×</button>
+    </div>
+    <div class="mnav" id="mnav"></div>
+    <div class="mbody" id="mbody"></div>
+  </div>
+</div>
+
+<script>
+const P={c:1.0,nu:0.005,amp:1.0,sigma:0.08,N:300,cfl:0.80,speed:0.1,tmax:5.0};
+let t=0,dx=0,dt=0;
+let u0=[],uNum=[],uExact=[],uDiff=[],uAdv=[];
+// Péclet regime states
+let peStates={low:[],med:[],hi:[]};
+let peParams={low:{c:0.1,nu:0.04},med:{c:1.0,nu:0.01},hi:{c:2.0,nu:0.001}};
+let xtSnapshots=[],lastSnapT=-1;
+let playing=false,animId=null,lastTs=null,curTab='evo';
+const SNAMES={'upwind_ftcs':'Upwind+FTCS','lax_cn':'Lax-Wendroff+CN','central_cn':'Central+CN'};
+
+function computeGrid(){
+  dx=1/P.N;
+  // Joint stability condition for Upwind+FTCS: ν_adv + 2r ≤ 1
+  // where ν_adv = |c|·dt/dx  and  r = ν·dt/dx²
+  // → dt ≤ dx / (|c| + 2ν/dx)  i.e. dt ≤ dx²/(|c|·dx + 2ν)
+  const absc=Math.max(Math.abs(P.c),0.01);
+  const dtAdv=P.cfl*dx/absc;                     // CFL-limited dt
+  const dtDiff=0.48*dx*dx/Math.max(P.nu,1e-12);  // diffusion-limited dt
+  const dtJoint=dx*dx/(absc*dx+2*Math.max(P.nu,1e-12)); // combined limit
+  dt=Math.min(dtAdv, dtDiff, dtJoint)*0.95;       // 5% safety margin
+}
+
+function buildIC(){
+  const A=P.amp,s=P.sigma;
+  return Array.from({length:P.N},(_,j)=>{
+    const x=j*dx;
+    switch(document.getElementById('ic-sel').value){
+      case 'gaussian': return A*Math.exp(-((x-.35)**2)/(2*s*s));
+      case 'square':   return Math.abs(x-.35)<s?A:0;
+      case 'sine':     return A*Math.sin(2*Math.PI*x);
+      case 'double':   return A*(Math.exp(-((x-.25)**2)/(2*s*s))+0.65*Math.exp(-((x-.55)**2)/(2*s*s)));
+      case 'triangle': {const d=Math.abs(x-.35);return d<s?A*(1-d/s):0;}
+      default: return A*Math.exp(-((x-.35)**2)/(2*s*s));
+    }
+  });
+}
+
+function interpArr(arr,x){const N=arr.length,xw=((x%1)+1)%1,fi=xw/dx,j=Math.floor(fi)%N,fr=fi-Math.floor(fi);return arr[j]*(1-fr)+arr[(j+1)%N]*fr;}
+
+// Exact solution via Fourier series on [0,1] periodic domain.
+// u(x,t) = Σ_k  c_k * exp(2πik(x - c*t)) * exp(-4π²k²νt)
+// We compute DFT of u0, apply the filter, then reconstruct via inverse DFT.
+// Only |k| up to K_MAX modes contribute significantly — beyond that the
+// diffusive damping exp(-4π²νt k²) is negligible.
+function computeExact(){
+  if(t<1e-10) return [...u0];
+  const N=P.N;
+  const nu=P.nu, c=P.c;
+  const twoPI=2*Math.PI;
+
+  // --- DFT of u0 (real signal, so we compute all N modes) ---
+  // Re and Im parts of ck = (1/N) Σ_j u0[j] exp(-2πijk/N)
+  // Determine how many modes we actually need
+  const K_MAX=Math.min(Math.floor(N/2), Math.ceil(Math.sqrt(18/(twoPI*twoPI*nu*Math.max(t,1e-6)))+5));
+  const ckRe=new Float64Array(K_MAX+1);
+  const ckIm=new Float64Array(K_MAX+1);
+  for(let k=0;k<=K_MAX;k++){
+    let re=0,im=0;
+    for(let j=0;j<N;j++){
+      const angle=twoPI*k*j/N;
+      re+=u0[j]*Math.cos(angle);
+      im-=u0[j]*Math.sin(angle);
+    }
+    ckRe[k]=re/N; ckIm[k]=im/N;
+  }
+
+  // --- Reconstruct with advection phase + diffusion damping ---
+  const result=new Float64Array(N);
+  for(let j=0;j<N;j++){
+    const x=j*dx;
+    let v=ckRe[0]; // k=0 term (DC, no phase)
+    for(let k=1;k<=K_MAX;k++){
+      const damp=Math.exp(-4*Math.PI*Math.PI*nu*t*k*k);
+      if(damp<1e-9) break; // remaining terms negligible
+      const phase=twoPI*k*(x-c*t);
+      const cosP=Math.cos(phase), sinP=Math.sin(phase);
+      // k and -k together give real result: 2*Re[c_k * exp(2πik(x-ct))]
+      v+=2*(ckRe[k]*cosP - ckIm[k]*sinP)*damp;
+    }
+    result[j]=isFinite(v)?v:0;
+  }
+  return Array.from(result);
+}
+
+// ── FTCS advection (upwind) + FTCS diffusion ──
+function stepUFTCS(u,c,nu){
+  const N=P.N,rc=c*dt/dx,rd=nu*dt/(dx*dx);
+  const un=new Array(N);
+  for(let j=0;j<N;j++){
+    const jm=(j-1+N)%N,jp=(j+1)%N;
+    const adv=c>=0?rc*(u[j]-u[jm]):rc*(u[jp]-u[j]);
+    const diff=rd*(u[jp]-2*u[j]+u[jm]);
+    un[j]=u[j]-adv+diff;
+    if(!isFinite(un[j]))un[j]=0;
+  }
+  return un;
+}
+
+// ── Lax-Wendroff advection + CN diffusion ──
+function stepLWCN(u,c,nu){
+  const N=P.N,rc=c*dt/dx,rd=nu*dt/(dx*dx);
+  // LW advection pass
+  const ua=new Array(N);
+  for(let j=0;j<N;j++){
+    const jm=(j-1+N)%N,jp=(j+1)%N;
+    ua[j]=u[j]-0.5*rc*(u[jp]-u[jm])+0.5*rc*rc*(u[jp]-2*u[j]+u[jm]);
+  }
+  // CN diffusion pass
+  const a=new Array(N).fill(-0.5*rd);
+  const b=new Array(N).fill(1+rd);
+  const c2=new Array(N).fill(-0.5*rd);
+  const d=ua.map((v,j)=>{const jm=(j-1+N)%N,jp=(j+1)%N;return v+0.5*rd*(ua[jp]-2*ua[j]+ua[jm]);});
+  const un=tridiagCyclic(a,b,c2,d);
+  return un.map(v=>isFinite(v)?v:0);
+}
+
+// ── Central advection + CN diffusion ──
+function stepCCN(u,c,nu){
+  const N=P.N,rc=c*dt/dx,rd=nu*dt/(dx*dx);
+  const ua=new Array(N);
+  for(let j=0;j<N;j++){
+    const jm=(j-1+N)%N,jp=(j+1)%N;
+    ua[j]=u[j]-0.5*rc*(u[jp]-u[jm]);
+  }
+  const a=new Array(N).fill(-0.5*rd);
+  const b=new Array(N).fill(1+rd);
+  const c2=new Array(N).fill(-0.5*rd);
+  const d=ua.map((v,j)=>{const jm=(j-1+N)%N,jp=(j+1)%N;return v+0.5*rd*(ua[jp]-2*ua[j]+ua[jm]);});
+  const un=tridiagCyclic(a,b,c2,d);
+  return un.map(v=>isFinite(v)?v:0);
+}
+
+function tridiag(a,b,c,d){
+  const N=d.length,x=new Array(N);
+  const cp=new Array(N),dp=new Array(N);
+  cp[0]=c[0]/b[0];dp[0]=d[0]/b[0];
+  for(let i=1;i<N;i++){const m=b[i]-a[i]*cp[i-1];cp[i]=c[i]/m;dp[i]=(d[i]-a[i]*dp[i-1])/m;}
+  x[N-1]=dp[N-1];
+  for(let i=N-2;i>=0;i--)x[i]=dp[i]-cp[i]*x[i+1];
+  return x;
+}
+
+// Cyclic tridiagonal solver via Sherman-Morrison for periodic BCs:
+// a[i]*x[i-1] + b[i]*x[i] + c[i]*x[i+1] = d[i]  (with x[-1]=x[N-1], x[N]=x[0])
+function tridiagCyclic(a,b,c,d){
+  const N=d.length;
+  if(N===1)return[d[0]/b[0]];
+  const gamma=-b[0];
+  // Modified diagonal strips the cyclic corners
+  const bmod=b.slice();
+  bmod[0]=b[0]-gamma;
+  bmod[N-1]=b[N-1]-c[N-1]*a[0]/gamma;
+  // Solve A'*y = d  and  A'*z = u  (u = [gamma,0,...,0,c[N-1]])
+  const u=new Array(N).fill(0);u[0]=gamma;u[N-1]=c[N-1];
+  const y=tridiag(a,bmod,c,d);
+  const z=tridiag(a,bmod,c,u);
+  // Sherman-Morrison combination: v = [1,0,...,0,a[0]/gamma]
+  const vdoty=y[0]+(a[0]/gamma)*y[N-1];
+  const vdotz=z[0]+(a[0]/gamma)*z[N-1];
+  const factor=vdoty/(1+vdotz);
+  return y.map((val,i)=>isFinite(val-factor*z[i])?val-factor*z[i]:0);
+}
+
+// Compute a stable dt for a given (c, nu) pair using current dx
+function safeRegimeDt(c,nu){
+  const absc=Math.max(Math.abs(c),0.01);
+  const dtAdv=P.cfl*dx/absc;
+  const dtDiff=0.48*dx*dx/Math.max(nu,1e-12);
+  const dtJoint=dx*dx/(absc*dx+2*Math.max(nu,1e-12));
+  return Math.min(dtAdv,dtDiff,dtJoint)*0.95;
+}
+function stepScheme(u,sch,c,nu){
+  if(sch==='upwind_ftcs') return stepUFTCS(u,c,nu);
+  if(sch==='lax_cn')      return stepLWCN(u,c,nu);
+  if(sch==='central_cn')  return stepCCN(u,c,nu);
+  return u;
+}
+
+function stepPureAdv(u){return Array.from({length:P.N},(_,j)=>interpArr(u0,j*dx-P.c*t));}
+
+function pecletVal(){return P.nu<1e-8?999:Math.abs(P.c)/P.nu;}
+
+function resetSim(){
+  playing=false;document.getElementById('btn-play').textContent='▶ Play';
+  if(animId)cancelAnimationFrame(animId);
+  lastTs=null;t=0;xtSnapshots=[];lastSnapT=-1;
+  computeGrid();u0=buildIC();
+  uNum=[...u0];uExact=[...u0];uDiff=[...u0];
+  uAdv=stepPureAdv(u0);
+  // reset Péclet regime states
+  Object.keys(peStates).forEach(k=>peStates[k]=[...u0]);
+  updateStatus();redraw();
+}
+
+function advance(realMs){
+  const simDt=Math.min(realMs*P.speed*0.001,0.05);
+  const steps=Math.max(1,Math.round(simDt/dt));
+  const sch=document.getElementById('sch-sel').value;
+  for(let s=0;s<steps;s++){
+    t+=dt;
+    if(t>P.tmax){
+      t=0;uNum=[...u0];uDiff=[...u0];
+      Object.keys(peStates).forEach(k=>peStates[k]=[...u0]);
+      xtSnapshots=[];lastSnapT=-1;
+    }
+    uNum=stepScheme(uNum,sch,P.c,P.nu);
+    uDiff=stepScheme(uDiff,'upwind_ftcs',0,P.nu);
+    // Péclet regimes — each uses its own stable dt via sub-stepping
+    Object.entries(peParams).forEach(([k,pp])=>{
+      const dtReg=safeRegimeDt(pp.c,pp.nu);
+      const nSub=Math.max(1,Math.ceil(dt/dtReg));
+      const dtSub=dt/nSub;
+      const savedDt=dt;
+      // Temporarily override dt for stepUFTCS (uses global dt)
+      dt=dtSub;
+      for(let ss=0;ss<nSub;ss++)peStates[k]=stepScheme(peStates[k],'upwind_ftcs',pp.c,pp.nu);
+      dt=savedDt;
+    });
+    if(t-lastSnapT>0.04){xtSnapshots.push({t,u:[...uNum]});if(xtSnapshots.length>400)xtSnapshots.shift();lastSnapT=t;}
+  }
+  uExact=computeExact();
+  uAdv=stepPureAdv(u0);
+}
+
+function togglePlay(){playing=!playing;document.getElementById('btn-play').textContent=playing?'⏸ Pause':'▶ Play';if(playing){lastTs=null;animId=requestAnimationFrame(loop);}}
+function loop(ts){if(!playing)return;if(lastTs!==null)advance(ts-lastTs);lastTs=ts;updateStatus();redraw();animId=requestAnimationFrame(loop);}
+function stepFwd(){
+  if(playing)return;
+  const sch=document.getElementById('sch-sel').value;
+  for(let s=0;s<20;s++){
+    t+=dt;if(t>P.tmax){t=0;uNum=[...u0];uDiff=[...u0];Object.keys(peStates).forEach(k=>peStates[k]=[...u0]);xtSnapshots=[];lastSnapT=-1;}
+    uNum=stepScheme(uNum,sch,P.c,P.nu);
+    uDiff=stepScheme(uDiff,'upwind_ftcs',0,P.nu);
+    Object.entries(peParams).forEach(([k,pp])=>{
+      const dtReg=safeRegimeDt(pp.c,pp.nu);
+      const nSub=Math.max(1,Math.ceil(dt/dtReg));
+      const dtSub=dt/nSub;const savedDt=dt;dt=dtSub;
+      for(let ss=0;ss<nSub;ss++)peStates[k]=stepScheme(peStates[k],'upwind_ftcs',pp.c,pp.nu);
+      dt=savedDt;
+    });
+    if(t-lastSnapT>0.04){xtSnapshots.push({t,u:[...uNum]});if(xtSnapshots.length>400)xtSnapshots.shift();lastSnapT=t;}
+  }
+  uExact=computeExact();uAdv=stepPureAdv(u0);
+  updateStatus();redraw();
+}
+
+function updateStatus(){
+  const Pe=pecletVal();
+  const cflV=Math.abs(P.c)*dt/dx;
+  const err=uExact.map((v,i)=>(v-uNum[i])**2);
+  const L2=Math.sqrt(err.reduce((a,b)=>a+b,0)/P.N);
+  const mass=uNum.reduce((s,v)=>s+v*dx,0);
+  const safeMass=Math.abs(mass)>1e-10?mass:1e-10;
+  const meanX=uNum.reduce((s,v,j)=>s+v*(j*dx)*dx,0)/safeMass;
+  const meanX2=uNum.reduce((s,v,j)=>s+v*(j*dx)**2*dx,0)/safeMass;
+  const sp=Math.sqrt(Math.max(0,meanX2-meanX*meanX));
+  const ixpeak=uNum.indexOf(Math.max(...uNum));
+  document.getElementById('tdisplay').textContent=`t = ${t.toFixed(3)}`;
+  document.getElementById('sb-t').textContent=`t = ${t.toFixed(3)}`;
+  document.getElementById('sb-pe').textContent=`Pe = ${Pe>100?Pe.toFixed(0):Pe.toFixed(2)}`;
+  document.getElementById('sb-cfl').textContent=`CFL = ${cflV.toFixed(3)}`;
+  document.getElementById('sb-l2').textContent=`L² = ${L2.toExponential(2)}`;
+  document.getElementById('sb-mass').textContent=`mass = ${mass.toFixed(4)}`;
+  document.getElementById('sb-sch').textContent=SNAMES[document.getElementById('sch-sel').value]||'';
+  document.getElementById('ls-pe').textContent=Pe>100?'>100':Pe.toFixed(2);
+  document.getElementById('ls-l2').textContent=L2.toExponential(2);
+  document.getElementById('ls-spread').textContent=sp.toFixed(4);
+  document.getElementById('ls-xpeak').textContent=(ixpeak*dx).toFixed(3);
+  document.getElementById('ls-mass').textContent=mass.toFixed(4);
+  document.getElementById('val-pe').textContent=Pe>100?'>100':Pe.toFixed(1);
+  const peBadge=document.getElementById('pe-badge');
+  peBadge.textContent=`Pe ${Pe>100?'>100':Pe.toFixed(1)}`;
+  peBadge.className='badge '+(Pe<5?'b-ok':Pe<20?'b-warn':'b-bad');
+  const cflB=document.getElementById('cfl-badge');
+  cflB.textContent=`CFL ${cflV.toFixed(2)}`;
+  cflB.className='badge '+(cflV<=1?'b-ok':cflV<=1.1?'b-warn':'b-bad');
+}
+
+// ── DRAWING ──
+const PAD={l:46,r:18,t:22,b:36};
+function fitCanvas(cv){const r=cv.parentElement.getBoundingClientRect();cv.width=Math.max(r.width,60);cv.height=Math.max(r.height,60);}
+function bgFill(ctx,W,H){
+  ctx.fillStyle='#f0fcfd';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#c5edf0';ctx.lineWidth=0.5;
+  [.25,.5,.75].forEach(f=>{const px=PAD.l+f*(W-PAD.l-PAD.r);ctx.beginPath();ctx.moveTo(px,PAD.t);ctx.lineTo(px,H-PAD.b);ctx.stroke();});
+}
+function drawAxes(ctx,W,H,ymin,ymax,yl,pr){
+  pr=pr||PAD.r;
+  ctx.save();ctx.strokeStyle='#9bb';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,H-PAD.b);ctx.lineTo(W-pr,H-PAD.b);ctx.stroke();
+  ctx.fillStyle='#567';ctx.font='10px JetBrains Mono,monospace';
+  [0,.25,.5,.75,1].forEach(f=>{const px=PAD.l+f*(W-PAD.l-pr);ctx.beginPath();ctx.moveTo(px,H-PAD.b);ctx.lineTo(px,H-PAD.b+4);ctx.stroke();ctx.fillText(f.toFixed(2),px-14,H-PAD.b+14);});
+  const ytk=[];for(let y=Math.ceil(ymin*4)/4;y<=ymax+.01;y+=.25)ytk.push(Math.round(y*100)/100);
+  ytk.forEach(y=>{const py=H-PAD.b-(y-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);ctx.beginPath();ctx.moveTo(PAD.l-3,py);ctx.lineTo(PAD.l,py);ctx.stroke();ctx.fillText(y.toFixed(2),1,py+3.5);});
+  if(ymin<0){const y0=H-PAD.b-(0-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);ctx.strokeStyle='#c0e8ec';ctx.lineWidth=0.6;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(PAD.l,y0);ctx.lineTo(W-pr,y0);ctx.stroke();ctx.setLineDash([]);}
+  ctx.fillStyle='#334';ctx.font='11px Source Serif 4,serif';ctx.fillText('x',W/2,H-1);
+  ctx.save();ctx.translate(11,H/2);ctx.rotate(-Math.PI/2);ctx.fillText(yl,0,0);ctx.restore();
+  ctx.restore();
+}
+function plotLine(ctx,arr,W,H,ymin,ymax,color,lw,dash,fill,pr){
+  if(!arr||!arr.length)return;pr=pr||PAD.r;
+  const pW=W-PAD.l-pr;
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.setLineDash(dash||[]);
+  ctx.beginPath();let s=false;
+  arr.forEach((v,i)=>{if(!isFinite(v))return;const px=PAD.l+(i/(arr.length-1))*pW;const py=H-PAD.b-(v-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);s?(ctx.lineTo(px,py)):(ctx.moveTo(px,py));s=true;});
+  ctx.stroke();
+  if(fill){const y0=H-PAD.b-(0-ymin)/(ymax-ymin)*(H-PAD.t-PAD.b);ctx.globalAlpha=0.12;ctx.fillStyle=color;ctx.lineTo(PAD.l+pW,y0);ctx.lineTo(PAD.l,y0);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
+  ctx.setLineDash([]);ctx.restore();
+}
+
+function drawEvolution(){
+  {
+    const cv=document.getElementById('cv-main');fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const ymin=-.1,ymax=P.amp*1.5+.1;
+    bgFill(ctx,W,H);
+    const sf=document.getElementById('tog-fill').checked;
+    if(document.getElementById('tog-init').checked) plotLine(ctx,u0,W,H,ymin,ymax,'#78909c',1.1,[4,3],false);
+    if(document.getElementById('tog-adv').checked)  plotLine(ctx,uAdv,W,H,ymin,ymax,'#1565c0',1.7,[],false);
+    if(document.getElementById('tog-diff').checked) plotLine(ctx,uDiff,W,H,ymin,ymax,'#6a1b9a',1.7,[],false);
+    if(document.getElementById('tog-exact').checked) plotLine(ctx,uExact,W,H,ymin,ymax,'#00838f',2.5,[],sf);
+    if(document.getElementById('tog-num').checked)   plotLine(ctx,uNum,W,H,ymin,ymax,'#e65100',2.0,[6,4],false);
+    drawAxes(ctx,W,H,ymin,ymax,'u');
+    ctx.fillStyle='#00838f';ctx.font='bold 11px JetBrains Mono,monospace';ctx.fillText(`t = ${t.toFixed(3)}`,W-PAD.r-88,PAD.t+14);
+    const Pe=pecletVal();
+    ctx.fillStyle=Pe<5?'#00838f':Pe<20?'#b85c00':'#b71c1c';
+    ctx.font='10px JetBrains Mono,monospace';ctx.fillText(`Pe=${Pe>100?'>100':Pe.toFixed(1)}`,PAD.l+4,PAD.t+14);
+  }
+  {
+    const cv=document.getElementById('cv-err');fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const err=uExact.map((v,i)=>Math.abs(v-uNum[i]));
+    const mx=Math.max(...err,1e-10);
+    bgFill(ctx,W,H);
+    ctx.beginPath();err.forEach((v,i)=>{const px=PAD.l+(i/(err.length-1))*(W-PAD.l-PAD.r);const py=H-PAD.b-(v/mx)*0.88*(H-PAD.t-PAD.b);i===0?ctx.moveTo(px,H-PAD.b):null;ctx.lineTo(px,py);});
+    ctx.lineTo(PAD.l+(W-PAD.l-PAD.r),H-PAD.b);ctx.closePath();ctx.fillStyle='rgba(0,131,143,0.18)';ctx.fill();
+    plotLine(ctx,err,W,H,0,mx*1.1,'#00838f',1.5,[],false);
+    drawAxes(ctx,W,H,0,mx*1.1,'|err|');
+    const L2=Math.sqrt(err.reduce((a,b)=>a+b*b,0)/err.length);
+    ctx.fillStyle='#00838f';ctx.font='bold 10px JetBrains Mono,monospace';ctx.fillText(`L² = ${L2.toExponential(2)}`,W-PAD.r-100,PAD.t+14);
+  }
+}
+
+function drawDecomp(){
+  const cv=document.getElementById('cv-decomp');fitCanvas(cv);
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const pr=120,pW=W-PAD.l-pr;
+  const ymin=-.1,ymax=P.amp*1.65;
+  bgFill(ctx,W,H);
+  plotLine(ctx,u0,W,H,ymin,ymax,'#78909c',1.1,[4,3],false,pr);
+  plotLine(ctx,uAdv,W,H,ymin,ymax,'#1565c0',2.0,[],false,pr);
+  plotLine(ctx,uDiff,W,H,ymin,ymax,'#6a1b9a',2.0,[],false,pr);
+  plotLine(ctx,uExact,W,H,ymin,ymax,'#00838f',2.5,[],false,pr);
+  // axes
+  ctx.strokeStyle='#9bb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,H-PAD.b);ctx.lineTo(W-pr,H-PAD.b);ctx.stroke();
+  ctx.fillStyle='#567';ctx.font='10px JetBrains Mono,monospace';
+  [0,.25,.5,.75,1].forEach(f=>{const px=PAD.l+f*pW;ctx.beginPath();ctx.moveTo(px,H-PAD.b);ctx.lineTo(px,H-PAD.b+4);ctx.stroke();ctx.fillText(f.toFixed(2),px-14,H-PAD.b+13);});
+  ctx.fillStyle='#334';ctx.font='11px Source Serif 4,serif';ctx.fillText('x',W/2,H-1);
+  const items=[{c:'#78909c',d:[4,3],l:'Initial'},{c:'#1565c0',d:[],l:'Advection only'},{c:'#6a1b9a',d:[],l:'Diffusion only'},{c:'#00838f',d:[],l:'Adv + Diff (exact)'}];
+  items.forEach((it,i)=>{
+    const lx=W-pr+8,ly=PAD.t+14+i*22;
+    ctx.strokeStyle=it.c;ctx.lineWidth=2;ctx.setLineDash(it.d);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx+16,ly);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#334';ctx.font='10px Source Serif 4,serif';ctx.fillText(it.l,lx+20,ly+4);
+  });
+  ctx.fillStyle='#00838f';ctx.font='bold 11px JetBrains Mono,monospace';ctx.fillText(`t = ${t.toFixed(3)}`,PAD.l+5,PAD.t+14);
+}
+
+function drawPeclet(){
+  const cvIds=['cv-pe-low','cv-pe-med','cv-pe-hi'];
+  const peKeys=['low','med','hi'];
+  const labels=[`Low Pe = ${(Math.abs(peParams.low.c)/peParams.low.nu).toFixed(0)}`,`Med Pe = ${(Math.abs(peParams.med.c)/peParams.med.nu).toFixed(0)}`,`High Pe = ${(Math.abs(peParams.hi.c)/peParams.hi.nu).toFixed(0)}`];
+  const cols=['#2e7d32','#00838f','#e65100'];
+  cvIds.forEach((id,i)=>{
+    const cv=document.getElementById(id);fitCanvas(cv);
+    const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const ymin=-.05,ymax=P.amp*1.6;
+    bgFill(ctx,W,H);
+    plotLine(ctx,u0,W,H,ymin,ymax,'#78909c',1.1,[4,3],false);
+    plotLine(ctx,peStates[peKeys[i]],W,H,ymin,ymax,cols[i],2.4,[],true);
+    drawAxes(ctx,W,H,ymin,ymax,'u');
+    ctx.fillStyle=cols[i];ctx.font='bold 10px JetBrains Mono,monospace';ctx.fillText(labels[i],PAD.l+4,PAD.t+14);
+    ctx.fillText(`t = ${t.toFixed(3)}`,W-PAD.r-85,PAD.t+14);
+  });
+}
+
+function drawXT(){
+  const cv=document.getElementById('cv-xt');fitCanvas(cv);
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const p={l:50,r:22,t:22,b:40};
+  const pW=W-p.l-p.r,pH=H-p.t-p.b;
+  ctx.fillStyle='#f0fcfd';ctx.fillRect(0,0,W,H);
+  if(xtSnapshots.length>1){
+    const tMax=P.tmax,amp=P.amp;
+    const img=ctx.createImageData(pW,pH);
+    xtSnapshots.forEach(snap=>{
+      const ry=1-snap.t/tMax;
+      const py=Math.floor(ry*pH);if(py<0||py>=pH)return;
+      for(let j=0;j<P.N;j++){
+        const px=Math.floor((j/P.N)*pW);if(px<0||px>=pW)continue;
+        const vn=Math.max(0,Math.min(1,snap.u[j]/amp));
+        const idx=(py*pW+px)*4;
+        img.data[idx]=Math.round(255*(1-vn*0.9));
+        img.data[idx+1]=Math.round(255*(1-vn*0.3));
+        img.data[idx+2]=Math.round(255*(1-vn*0.1));
+        img.data[idx+3]=220;
+      }
+    });
+    ctx.putImageData(img,p.l,p.t);
+  }
+  // advection characteristics
+  const nC=20;
+  ctx.strokeStyle='rgba(21,101,192,0.45)';ctx.lineWidth=0.9;
+  for(let k=0;k<nC;k++){
+    const x0=k/nC;
+    ctx.beginPath();
+    for(let ti=0;ti<=100;ti++){
+      const tv=ti/100*P.tmax;
+      const xv=((x0+P.c*tv)%1+1)%1;
+      const px=p.l+xv*pW,py=p.t+pH-tv/P.tmax*pH;
+      ti===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+  }
+  // current time
+  const cury=p.t+pH-t/P.tmax*pH;
+  ctx.strokeStyle='#e65100';ctx.lineWidth=2;ctx.setLineDash([8,4]);
+  ctx.beginPath();ctx.moveTo(p.l,cury);ctx.lineTo(W-p.r,cury);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#e65100';ctx.font='10px JetBrains Mono,monospace';ctx.fillText(`t = ${t.toFixed(2)}`,p.l+4,cury-4);
+  // axes
+  ctx.strokeStyle='#9bb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.l,p.t);ctx.lineTo(p.l,H-p.b);ctx.lineTo(W-p.r,H-p.b);ctx.stroke();
+  ctx.fillStyle='#567';ctx.font='10px JetBrains Mono,monospace';
+  [0,.25,.5,.75,1].forEach(f=>{const px=p.l+f*pW;ctx.beginPath();ctx.moveTo(px,H-p.b);ctx.lineTo(px,H-p.b+4);ctx.stroke();ctx.fillText(f.toFixed(2),px-14,H-p.b+14);});
+  [0,.25,.5,.75,1].forEach(f=>{const tv=f*P.tmax,py=p.t+pH*(1-f);ctx.beginPath();ctx.moveTo(p.l-3,py);ctx.lineTo(p.l,py);ctx.stroke();ctx.fillText(tv.toFixed(1),1,py+3.5);});
+  ctx.fillStyle='#334';ctx.font='11px Source Serif 4,serif';ctx.fillText('x',W/2,H-2);
+  ctx.save();ctx.translate(12,H/2);ctx.rotate(-Math.PI/2);ctx.fillText('t',0,0);ctx.restore();
+  ctx.strokeStyle='rgba(21,101,192,0.7)';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(W-p.r-80,p.t+12);ctx.lineTo(W-p.r-62,p.t+12);ctx.stroke();
+  ctx.fillStyle='#334';ctx.font='10px Source Serif 4,serif';ctx.fillText('adv. char.',W-p.r-60,p.t+16);
+}
+
+function drawLegend(){
+  const cv=document.getElementById('cv-legend');if(!cv)return;
+  const items=[{color:'#00838f',dash:[],lw:2.5,label:'Exact'},{color:'#e65100',dash:[6,4],lw:2.0,label:'Numerical'},{color:'#1565c0',dash:[],lw:1.7,label:'Advection only'},{color:'#6a1b9a',dash:[],lw:1.7,label:'Diffusion only'},{color:'#78909c',dash:[4,3],lw:1.1,label:'Initial'}];
+  const H=22,itemW=120,pad=6;cv.width=items.length*itemW+pad;cv.height=H;
+  const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,H);ctx.font='11px Source Serif 4,serif';
+  items.forEach((it,i)=>{const ox=i*itemW+pad,cy=H/2;ctx.save();ctx.strokeStyle=it.color;ctx.lineWidth=it.lw;ctx.setLineDash(it.dash);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(ox,cy);ctx.lineTo(ox+22,cy);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#334';ctx.fillText(it.label,ox+26,cy+4);ctx.restore();});
+}
+
+function redraw(){
+  drawLegend();
+  switch(curTab){
+    case 'evo':    drawEvolution();break;
+    case 'decomp': drawDecomp();   break;
+    case 'peclet': drawPeclet();   break;
+    case 'xt':     drawXT();       break;
+  }
+}
+
+function switchTab(tab,btn){
+  curTab=tab;document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  ['evo','decomp','peclet','xt'].forEach(id=>{const el=document.getElementById(`tab-${id}`);if(el)el.style.display=id===tab?'flex':'none';});
+  setTimeout(redraw,30);
+}
+
+function upC(v){P.c=parseFloat(v);document.getElementById('val-c').textContent=P.c.toFixed(2);resetSim();}
+function upNu(v){P.nu=parseFloat(v);document.getElementById('val-nu').textContent=P.nu.toFixed(3);resetSim();}
+function upAmp(v){P.amp=parseFloat(v);document.getElementById('val-amp').textContent=P.amp.toFixed(1);resetSim();}
+function upSig(v){P.sigma=parseFloat(v);document.getElementById('val-sig').textContent=P.sigma.toFixed(2);resetSim();}
+function upN(v){P.N=parseInt(v);document.getElementById('val-N').textContent=P.N;resetSim();}
+function upCFL(v){P.cfl=parseFloat(v);document.getElementById('val-cfl').textContent=P.cfl.toFixed(2);computeGrid();updateStatus();redraw();}
+function upSpd(v){P.speed=parseFloat(v);document.getElementById('val-spd').textContent=P.speed.toFixed(1);}
+function upTmax(v){P.tmax=parseFloat(v);document.getElementById('val-tmax').textContent=P.tmax.toFixed(1);}
+
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.key===' '){e.preventDefault();togglePlay();}if(e.key==='ArrowRight')stepFwd();if(e.key==='r'||e.key==='R')resetSim();});
+let rzTimer;window.addEventListener('resize',()=>{clearTimeout(rzTimer);rzTimer=setTimeout(()=>redraw(),80);});
+
+const HELP=[
+  {title:'What Is It?',html:`
+    <h3>The Advection–Diffusion Equation</h3>
+    <p>The advection–diffusion equation combines two fundamental transport mechanisms:</p>
+    <div class="mbox">\\(u_t + c\\,u_x = \\nu\\,u_{xx}\\)</div>
+    <p>The left side is pure <strong>advection</strong> (transport equation): moves \\(u\\) rigidly at speed \\(c\\). The right side is pure <strong>diffusion</strong> (heat equation): spreads \\(u\\) symmetrically.</p>
+    <div class="abox">Analogy: A dye drop released in a flowing river. The current carries it downstream (advection) while molecular diffusion simultaneously spreads it outward (diffusion). The advection–diffusion equation governs exactly this.</div>
+    <p>Depending on which term dominates, the behavior is qualitatively different — this is captured by the <strong>Péclet number</strong>.</p>
+    <p><strong>References:</strong><br>
+    📄 <a class="mlink" href="https://en.wikipedia.org/wiki/Convection%E2%80%93diffusion_equation" target="_blank">Wikipedia — Convection-Diffusion Equation</a><br>
+    🎥 <a class="mlink" href="https://www.youtube.com/watch?v=ly4S0oi3Yz8" target="_blank">Steve Brunton — Transport Phenomena and the Advection-Diffusion equation</a><br>
+    📄 <a class="mlink" href="https://ocw.mit.edu/courses/1-061-transport-processes-in-the-environment-fall-2008/" target="_blank">MIT OCW 1.061 — Transport Processes in the Environment</a></p>
+  `},
+  {title:'Exact Solution',html:`
+    <h3>Exact Solution</h3>
+    <p>The exact solution is found by the change of variables \\(\\xi = x - ct\\), transforming the equation to pure diffusion in the moving frame:</p>
+    <div class="mbox">\\(u(x,t) = \\frac{1}{\\sqrt{4\\pi\\nu t}}\\int_{-\\infty}^{\\infty} u_0(y)\\,\\exp\\!\\left(-\\frac{(x-y-ct)^2}{4\\nu t}\\right)dy\\)</div>
+    <p>This is the <strong>heat kernel convolution centered at the advected position</strong> \\(x_0 + ct\\). For a Gaussian initial condition \\(u_0 = A\\exp(-x^2/2\\sigma_0^2)\\):</p>
+    <div class="mbox">\\(u(x,t) = \\frac{A\\sigma_0}{\\sigma(t)}\\exp\\!\\left(-\\frac{(x-ct)^2}{2\\sigma(t)^2}\\right),\\quad \\sigma(t)=\\sqrt{\\sigma_0^2+2\\nu t}\\)</div>
+    <p>Key observations:</p>
+    <ul>
+      <li>The <strong>peak moves</strong> at speed \\(c\\) (pure advection)</li>
+      <li>The <strong>width grows</strong> as \\(\\sqrt{2\\nu t}\\) (pure diffusion)</li>
+      <li>The two effects are <em>independent</em> and <em>superposable</em></li>
+    </ul>
+    <p>The <strong>Decomposition</strong> tab shows the exact solution alongside pure advection and pure diffusion separately — watch how they combine into the full solution.</p>
+    <p><strong>References:</strong><br>
+    📄 <a class="mlink" href="https://mathworld.wolfram.com/ConvectionDiffusionEquation.html" target="_blank">MathWorld — Convection-Diffusion Equation</a><br>
+    🎥 <a class="mlink" href="https://www.youtube.com/watch?v=4pDGPCyXSgI" target="_blank">Steve Brunton — Solving PDEs with Fourier transforms</a></p>
+  `},
+  {title:'Péclet Number',html:`
+    <h3>The Péclet Number</h3>
+    <p>The <strong>Péclet number</strong> \\(Pe\\) is the dimensionless ratio of advective to diffusive transport:</p>
+    <div class="mbox">\\(Pe = \\frac{cL}{\\nu}\\)</div>
+    <p>where \\(L\\) is a characteristic length scale (here \\(L=1\\)).</p>
+    <table class="itable">
+      <tr><th>Regime</th><th>Pe</th><th>Behavior</th></tr>
+      <tr><td><strong>Diffusion-dominated</strong></td><td>\\(Pe \\ll 1\\)</td><td>Profile spreads rapidly, advection barely visible</td></tr>
+      <tr><td><strong>Balanced</strong></td><td>\\(Pe \\sim 1\\)</td><td>Both mechanisms comparably important</td></tr>
+      <tr><td><strong>Advection-dominated</strong></td><td>\\(Pe \\gg 1\\)</td><td>Sharp front advects with minimal spreading</td></tr>
+    </table>
+    <p>The <strong>Péclet Regimes</strong> tab shows all three simultaneously from the same initial condition. The Péclet badge in the toolbar changes color: green (low), yellow (medium), red (high Pe — numerically challenging!).</p>
+    <p><strong>Numerical difficulty:</strong> High Péclet flows are problematic for central difference schemes — they produce spurious oscillations. Upwind differencing cures these but adds numerical diffusion \\(\\sim c\\Delta x / 2\\).</p>
+    <p><strong>References:</strong><br>
+    📄 <a class="mlink" href="https://en.wikipedia.org/wiki/P%C3%A9clet_number" target="_blank">Wikipedia — Péclet number</a><br>
+    📄 <a class="mlink" href="https://www.simscale.com/docs/simwiki/numerics-background/what-is-the-peclet-number/" target="_blank">SimScale — What is the Péclet number?</a></p>
+  `},
+  {title:'Numerical Schemes',html:`
+    <h3>Numerical Methods</h3>
+    <p>The challenge is to accurately capture both transport (hyperbolic character) and diffusion (parabolic character). The three schemes here use operator splitting:</p>
+    <table class="itable">
+      <tr><th>Scheme</th><th>Advection</th><th>Diffusion</th></tr>
+      <tr><td><strong>Upwind + FTCS</strong></td><td>1st order upwind</td><td>Forward-time centered</td></tr>
+      <tr><td><strong>Lax-Wendroff + CN</strong></td><td>2nd order LW</td><td>Crank-Nicolson (implicit)</td></tr>
+      <tr><td><strong>Central + CN</strong></td><td>2nd order central (unstable at high Pe!)</td><td>Crank-Nicolson</td></tr>
+    </table>
+    <p><strong>Stability conditions (both must be satisfied simultaneously):</strong></p>
+    <div class="mbox">\\(\\nu_{adv} = \\frac{|c|\\,\\Delta t}{\\Delta x} \\leq 1,\\qquad r = \\frac{\\nu\\,\\Delta t}{\\Delta x^2} \\leq \\frac{1}{2}\\)</div>
+    <p>The code automatically adjusts \\(\\Delta t\\) to satisfy both. The combined condition is sometimes written as a requirement on the <strong>mesh Péclet number</strong> \\(Pe_h = |c|\\Delta x / \\nu \\leq 2\\).</p>
+    <p><strong>Upwind diffusion:</strong> The upwind scheme introduces artificial (numerical) diffusion of magnitude \\(\\tfrac{|c|\\Delta x}{2}(1-\\nu_{adv})\\). For high Pe flows, this can dominate the physical diffusion.</p>
+    <p><strong>References:</strong><br>
+    📄 <a class="mlink" href="https://www.sciencedirect.com/topics/engineering/upwind-scheme" target="_blank">ScienceDirect — Upwind Scheme</a><br>
+    🎥 <a class="mlink" href="https://www.youtube.com/watch?v=KbOXNhFb2JM" target="_blank">Prof. Lorena Barba — CFD fundamentals (12 steps)</a><br>
+    📄 <a class="mlink" href="https://github.com/barbagroup/CFDPython" target="_blank">GitHub — 12 Steps to Navier-Stokes (Python)</a></p>
+  `},
+  {title:'Applications',html:`
+    <h3>Applications</h3>
+    <table class="itable">
+      <tr><th>Field</th><th>Physical meaning</th></tr>
+      <tr><td>Environmental engineering</td><td>Pollutant transport in rivers, groundwater</td></tr>
+      <tr><td>Atmospheric science</td><td>Dispersion of CO₂, aerosols in wind</td></tr>
+      <tr><td>Chemical engineering</td><td>Reacting species in flow reactors</td></tr>
+      <tr><td>Biomedical</td><td>Drug transport in blood vessels (Péclet ~ 10²–10⁴)</td></tr>
+      <tr><td>Finance</td><td>Generalized Black-Scholes with drift and volatility</td></tr>
+      <tr><td>Oceanography</td><td>Tracer transport (temperature, salinity) in ocean currents</td></tr>
+    </table>
+    <p>In ocean and atmosphere models, the advection-diffusion equation is solved over a sphere at resolution \\(\\Delta x \\sim 10\\) km with timesteps of minutes — demanding both stability and accuracy simultaneously.</p>
+    <p><strong>Further reading:</strong><br>
+    📄 <a class="mlink" href="https://www.amazon.com/Numerical-Methods-Engineers-Steven-Chapra/dp/0073397954" target="_blank">Chapra & Canale — Numerical Methods for Engineers (Ch.29)</a><br>
+    📄 <a class="mlink" href="https://doi.org/10.1016/j.advwatres.2006.11.001" target="_blank">Zheng & Bennett (2002) — Applied Contaminant Transport Modeling</a><br>
+    🎥 <a class="mlink" href="https://www.youtube.com/watch?v=F1OC5e7Tn_o" target="_blank">NPTEL — Advection-Diffusion in Environmental Flows</a><br>
+    🎥 <a class="mlink" href="https://www.youtube.com/watch?v=cDtA0bBSMpM" target="_blank">Steve Brunton — Data-driven methods for advection-diffusion</a></p>
+  `}
+];
+
+let curSection=0;
+function buildNav(){const nav=document.getElementById('mnav');nav.innerHTML='';HELP.forEach((s,i)=>{const b=document.createElement('button');b.className='mnbtn'+(i===0?' active':'');b.textContent=s.title;b.onclick=()=>showSection(i);nav.appendChild(b);});}
+function showSection(i){curSection=i;document.querySelectorAll('.mnbtn').forEach((b,j)=>b.classList.toggle('active',j===i));const body=document.getElementById('mbody');body.innerHTML=HELP[i].html;if(window.renderMathInElement)renderMathInElement(body,{delimiters:[{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]});}
+function openHelp(){buildNav();showSection(0);document.getElementById('help-modal').classList.add('open');}
+function closeHelp(){document.getElementById('help-modal').classList.remove('open');}
+document.getElementById('help-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeHelp();});
+
+window.addEventListener('load',()=>{
+  document.querySelectorAll('canvas').forEach(cv=>{const r=cv.parentElement.getBoundingClientRect();cv.width=Math.max(r.width,60);cv.height=Math.max(r.height,60);});
+  resetSim();   // resetSim already calls updateStatus → Pe badge is initialized
+});
+</script>
+</body>
+</html>
