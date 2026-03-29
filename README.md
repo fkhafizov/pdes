@@ -9,6 +9,10 @@
 * https://fkhafizov.github.io/animation/young_tableaux_comp_v9.html
 
 
+2026.03.29
+
+(base)  18:01 paulpaul ~/Library/Mobile Documents/com~apple~CloudDocs/code/lte_rsrp/claude_browser 
+lte_rsrp_v2.html save here as lte_rsrp_clbr_v2.html
 
   
 ```
