@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Route Optimizer · Richardson → Keller · LTE-Aware</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:          #e8f5e9;
+  --bg-panel:    #f0faf0;
+  --bg-card:     #ffffff;
+  --g-dark:      #1b5e20;
+  --g-mid:       #2e7d32;
+  --g-lite:      #a5d6a7;
+  --g-accent:    #43a047;
+  --border:      #b8ddb9;
+  --shadow:      rgba(27,94,32,0.13);
+  --ra:          #1565c0;
+  --rb:          #b71c1c;
+  --ra-bg:       #e3f2fd;
+  --rb-bg:       #ffebee;
+  --text:        #1a2e1a;
+  --text2:       #4a6741;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 13px;
+}
+
+/* ─── HEADER ─────────────────────────────────────────── */
+header {
+  background: linear-gradient(130deg,#1b5e20 0%,#2e7d32 55%,#00695c 100%);
+  padding: 12px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.28);
+}
+.h-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1px;
+}
+.h-title span { color: #a5d6a7; }
+.h-sub {
+  font-size: 11px;
+  color: #b2dfb2;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.h-badge {
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 20px;
+  padding: 5px 15px;
+  color: #c8e6c9;
+  font-size: 12px;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+/* ─── LAYOUT ─────────────────────────────────────────── */
+.wrap {
+  display: grid;
+  grid-template-columns: 1fr 310px;
+  grid-template-rows: auto auto;
+  gap: 12px;
+  padding: 12px;
+}
+
+/* ─── MAP ─────────────────────────────────────────────── */
+.map-panel {
+  background: var(--bg-card);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 2px 12px var(--shadow);
+  position: relative;
+  grid-row: 1;
+}
+#map { height: 428px; }
+
+.map-overlay {
+  position: absolute;
+  top: 10px; left: 10px;
+  z-index: 1000;
+  background: rgba(255,255,255,0.94);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--g-dark);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 10px; left: 10px;
+  z-index: 1000;
+  background: rgba(255,255,255,0.95);
+  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  line-height: 1.8;
+}
+.leg-row { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text); }
+.leg-line { width: 24px; height: 4px; border-radius: 2px; }
+.leg-sq { width: 9px; height: 9px; border-radius: 2px; }
+
+/* ─── SIDEBAR ─────────────────────────────────────────── */
+.sidebar {
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 2px 8px var(--shadow);
+  padding: 14px;
+}
+.card-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--g-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+  padding-bottom: 7px;
+  border-bottom: 2px solid var(--g-lite);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Time buttons */
+.time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.t-btn {
+  padding: 9px 6px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  transition: all 0.18s;
+  color: var(--text);
+  line-height: 1.3;
+}
+.t-btn:hover { border-color: var(--g-mid); background: #f0faf0; }
+.t-btn.active { background: var(--g-dark); color: #fff; border-color: var(--g-dark); }
+.t-sub { font-size: 10px; font-weight: 400; margin-top: 1px; }
+.t-btn.active .t-sub { color: #a5d6a7; }
+
+/* KPI checkboxes */
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.kpi-lbl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.18s;
+  user-select: none;
+}
+.kpi-lbl:hover { border-color: var(--g-mid); }
+.kpi-lbl.on { border-color: var(--g-accent); background: #f0faf0; }
+.kpi-lbl input { display: none; }
+.kpi-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.kpi-nm { font-size: 11px; font-weight: 600; }
+
+/* Travel time */
+.tt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tt-card {
+  border-radius: 10px;
+  padding: 11px 10px;
+  text-align: center;
+}
+.tt-card.a { background: var(--ra-bg); border: 2px solid var(--ra); }
+.tt-card.b { background: var(--rb-bg); border: 2px solid var(--rb); }
+.tt-route-lbl {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.tt-card.a .tt-route-lbl { color: var(--ra); }
+.tt-card.b .tt-route-lbl { color: var(--rb); }
+.tt-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 3px 0 2px;
+}
+.tt-card.a .tt-val { color: var(--ra); }
+.tt-card.b .tt-val { color: var(--rb); }
+.tt-detail { font-size: 10px; color: #666; }
+
+/* Run button */
+.run-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #1b5e20, #388e3c);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  box-shadow: 0 3px 10px rgba(27,94,32,0.32);
+}
+.run-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 15px rgba(27,94,32,0.42); }
+.run-btn:active { transform: translateY(0); }
+
+/* ─── CHARTS SECTION ─────────────────────────────────── */
+.charts-section { grid-column: 1 / -1; }
+
+.tab-bar {
+  display: flex;
+  background: var(--bg-card);
+  border-radius: 12px 12px 0 0;
+  border: 1.5px solid var(--border);
+  border-bottom: none;
+  overflow: hidden;
+}
+.tab-btn {
+  flex: 1;
+  padding: 11px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  transition: all 0.18s;
+}
+.tab-btn:hover { background: #f0faf0; color: var(--g-dark); }
+.tab-btn.active { color: var(--g-dark); background: #f0faf0; border-bottom: 3px solid var(--g-accent); }
+
+.tab-body {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 0 0 12px 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* Chart grids */
+.cg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+.cw {
+  background: var(--bg);
+  border-radius: 9px;
+  padding: 13px;
+  border: 1px solid var(--border);
+}
+.cw-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--g-dark);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  letter-spacing: 0.4px;
+}
+.ch { position: relative; height: 200px; }
+.ch-tall { position: relative; height: 250px; }
+
+/* Trade-off table */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.tbl th {
+  background: var(--g-dark);
+  color: #fff;
+  padding: 9px 13px;
+  text-align: left;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  font-size: 13px;
+}
+.tbl td { padding: 9px 13px; border-bottom: 1px solid var(--border); }
+.tbl tr:nth-child(even) td { background: #f4faf4; }
+.tbl tr:hover td { background: #e8f5e9; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Rajdhani', sans-serif;
+}
+.ba { background: var(--ra-bg); color: var(--ra); border: 1px solid var(--ra); }
+.bb { background: var(--rb-bg); color: var(--rb); border: 1px solid var(--rb); }
+.bt { background: #e8f5e9; color: var(--g-dark); border: 1px solid var(--g-accent); }
+
+.mv-a { font-family:'Share Tech Mono',monospace; color: var(--ra); font-weight:700; }
+.mv-b { font-family:'Share Tech Mono',monospace; color: var(--rb); font-weight:700; }
+
+.verdict {
+  margin-top: 16px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border-left: 5px solid var(--g-accent);
+  background: #f0faf0;
+}
+.v-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--g-dark);
+  margin-bottom: 5px;
+}
+.v-body { font-size: 12.5px; line-height: 1.7; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--g-lite); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div>
+    <div class="h-title">🛣️ Route Optimizer &nbsp;·&nbsp; <span>Richardson → Keller, TX</span></div>
+    <div class="h-sub">LTE Network-Aware Route Intelligence &nbsp;|&nbsp; DFW Metroplex Simulation</div>
+  </div>
+  <div class="h-badge">📡 LTE Sim Engine v2.4</div>
+</header>
+
+<div class="wrap">
+
+  <!-- MAP PANEL -->
+  <div class="map-panel">
+    <div class="map-overlay">📍 Route A: US-75 → I-635 → I-35W &nbsp;|&nbsp; Route B: TX-190 (Bush Pkwy) → TX-114</div>
+    <div id="map"></div>
+    <div class="map-legend">
+      <div class="leg-row"><div class="leg-line" style="background:#1565c0"></div> Route A (US-75)</div>
+      <div class="leg-row"><div class="leg-line" style="background:#b71c1c;"></div> Route B (TX-190)</div>
+      <div class="leg-row"><div class="leg-sq" style="background:#1565c0;border:1.5px solid #fff"></div> Tower A</div>
+      <div class="leg-row"><div class="leg-sq" style="background:#b71c1c;border:1.5px solid #fff"></div> Tower B</div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Time of Travel -->
+    <div class="card">
+      <div class="card-title">🕐 Time of Travel</div>
+      <div class="time-grid">
+        <button class="t-btn" data-t="morning_rush" onclick="selTime(this)">
+          7 – 9 AM<div class="t-sub">Morning Rush</div>
+        </button>
+        <button class="t-btn active" data-t="midday" onclick="selTime(this)">
+          10AM – 3PM<div class="t-sub">Midday</div>
+        </button>
+        <button class="t-btn" data-t="evening_rush" onclick="selTime(this)">
+          5 – 7 PM<div class="t-sub">Evening Rush</div>
+        </button>
+        <button class="t-btn" data-t="night" onclick="selTime(this)">
+          8PM – 12AM<div class="t-sub">Night</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Selector -->
+    <div class="card">
+      <div class="card-title">📊 LTE KPIs to Analyze</div>
+      <div class="kpi-grid">
+        <label class="kpi-lbl on" onclick="togKpi(this,'drop')">
+          <input type="checkbox" checked>
+          <div class="kpi-dot" style="background:#e53935"></div>
+          <span class="kpi-nm">Call Drop</span>
+        </label>
+        <label class="kpi-lbl on" onclick="togKpi(this,'tput')">
+          <input type="checkbox" checked>
+          <div class="kpi-dot" style="background:#1565c0"></div>
+          <span class="kpi-nm">Throughput</span>
+        </label>
+        <label class="kpi-lbl on" onclick="togKpi(this,'lat')">
+          <input type="checkbox" checked>
+          <div class="kpi-dot" style="background:#f57c00"></div>
+          <span class="kpi-nm">Latency</span>
+        </label>
+        <label class="kpi-lbl on" onclick="togKpi(this,'hoff')">
+          <input type="checkbox" checked>
+          <div class="kpi-dot" style="background:#2e7d32"></div>
+          <span class="kpi-nm">Handoff SR</span>
+        </label>
+        <label class="kpi-lbl" onclick="togKpi(this,'rsrp')">
+          <input type="checkbox">
+          <div class="kpi-dot" style="background:#6a1b9a"></div>
+          <span class="kpi-nm">RSRP (dBm)</span>
+        </label>
+        <label class="kpi-lbl" onclick="togKpi(this,'sinr')">
+          <input type="checkbox">
+          <div class="kpi-dot" style="background:#00838f"></div>
+          <span class="kpi-nm">SINR (dB)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Travel Times -->
+    <div class="card">
+      <div class="card-title">⏱ Estimated Travel Time</div>
+      <div class="tt-grid">
+        <div class="tt-card a">
+          <div class="tt-route-lbl">Route A</div>
+          <div class="tt-val" id="ttA">–</div>
+          <div class="tt-detail" id="spA">US-75 · I-635 · I-35W</div>
+          <div class="tt-detail">45.2 mi</div>
+        </div>
+        <div class="tt-card b">
+          <div class="tt-route-lbl">Route B</div>
+          <div class="tt-val" id="ttB">–</div>
+          <div class="tt-detail" id="spB">TX-190 · TX-114</div>
+          <div class="tt-detail">40.8 mi</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="run-btn" onclick="runSim()">⚡ Run Simulation</button>
+  </div>
+
+  <!-- CHARTS SECTION -->
+  <div class="charts-section">
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tbKpi"  onclick="swTab('kpi',this)">📊 KPI Profiles</button>
+      <button class="tab-btn"        id="tbDrop" onclick="swTab('drop',this)">📉 Call Drop Analysis</button>
+      <button class="tab-btn"        id="tbTO"   onclick="swTab('to',this)">⚖️ Trade-off Summary</button>
+    </div>
+    <div class="tab-body">
+
+      <!-- TAB: KPI Profiles -->
+      <div class="tab-pane active" id="pKpi">
+        <div class="cg2">
+          <div class="cw">
+            <div class="cw-title">Call Drop Rate per Tower (%)</div>
+            <div class="ch"><canvas id="cDrop"></canvas></div>
+          </div>
+          <div class="cw">
+            <div class="cw-title">DL Throughput per Tower (Mbps)</div>
+            <div class="ch"><canvas id="cTput"></canvas></div>
+          </div>
+          <div class="cw">
+            <div class="cw-title">Latency per Tower (ms)</div>
+            <div class="ch"><canvas id="cLat"></canvas></div>
+          </div>
+          <div class="cw">
+            <div class="cw-title">Handoff Success Rate per Tower (%)</div>
+            <div class="ch"><canvas id="cHoff"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Call Drop Analysis -->
+      <div class="tab-pane" id="pDrop">
+        <div class="cg2">
+          <div class="cw">
+            <div class="cw-title">Cumulative P(Call Drop) Along Route (%)</div>
+            <div class="ch-tall"><canvas id="cCum"></canvas></div>
+          </div>
+          <div class="cw">
+            <div class="cw-title">Multi-KPI Radar — Route A vs Route B</div>
+            <div class="ch-tall"><canvas id="cRadar"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Trade-off Summary -->
+      <div class="tab-pane" id="pTo">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th style="color:#90caf9">Route A — US-75/I-635/I-35W</th>
+              <th style="color:#ef9a9a">Route B — TX-190/TX-114</th>
+              <th>Better</th>
+            </tr>
+          </thead>
+          <tbody id="toBody"></tbody>
+        </table>
+        <div class="verdict">
+          <div class="v-title">🏁 Recommendation</div>
+          <div class="v-body" id="vText">Run the simulation to see the full trade-off analysis.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .wrap -->
+
+<script>
+// ══════════════════════════════════════════════════════
+//  DATA MODEL
+// ══════════════════════════════════════════════════════
+const TIMES = {
+  morning_rush: { lbl:'7–9 AM Rush',   lf:2.5,  sfA:0.38, sfB:0.53 },
+  midday:       { lbl:'10 AM – 3 PM',  lf:1.2,  sfA:0.77, sfB:0.90 },
+  evening_rush: { lbl:'5–7 PM Rush',   lf:3.0,  sfA:0.30, sfB:0.44 },
+  night:        { lbl:'8 PM – 12 AM',  lf:0.4,  sfA:1.00, sfB:1.00 },
+};
+
+// Route A: Richardson → US-75 S → I-635 W → I-35W N → Keller
+const RA = {
+  name:'Route A (US-75 → I-635 → I-35W)',
+  clr:'#1565c0', mi:45.2, spd:65,
+  towers:[
+    {id:'A1',lbl:'Richardson/US-75',  rsrp:-78, drop:.012, tp:120, ms:22, ho:.980},
+    {id:'A2',lbl:'Dallas/US-75 N',    rsrp:-82, drop:.018, tp:105, ms:25, ho:.972},
+    {id:'A3',lbl:'US-75 ↔ I-635',    rsrp:-85, drop:.022, tp: 95, ms:28, ho:.965},
+    {id:'A4',lbl:'I-635 West',        rsrp:-80, drop:.015, tp:115, ms:23, ho:.975},
+    {id:'A5',lbl:'I-35W Junction',    rsrp:-83, drop:.019, tp:100, ms:27, ho:.970},
+    {id:'A6',lbl:'I-35W North',       rsrp:-87, drop:.025, tp: 88, ms:32, ho:.963},
+    {id:'A7',lbl:'Keller / I-35W',    rsrp:-79, drop:.013, tp:118, ms:21, ho:.979},
+  ],
+  path:[[33.0401,-96.7296],[33.025,-96.733],[32.985,-96.736],[32.950,-96.750],
+        [32.910,-96.780],[32.889,-96.870],[32.888,-96.975],[32.888,-97.055],
+        [32.905,-97.135],[32.920,-97.193],[32.9343,-97.2291]],
+  tc:  [[33.025,-96.733],[32.985,-96.736],[32.950,-96.750],
+        [32.888,-96.975],[32.888,-97.055],[32.905,-97.135],[32.922,-97.196]],
+};
+
+// Route B: Richardson → TX-190 (Bush Pkwy) W → TX-114 W → Keller
+const RB = {
+  name:'Route B (TX-190 → TX-114)',
+  clr:'#b71c1c', mi:40.8, spd:70,
+  towers:[
+    {id:'B1',lbl:'Richardson/TX-190',  rsrp:-81, drop:.014, tp:110, ms:24, ho:.977},
+    {id:'B2',lbl:'Bush Pkwy Mid',      rsrp:-84, drop:.016, tp:108, ms:25, ho:.975},
+    {id:'B3',lbl:'Bush Pkwy West',     rsrp:-88, drop:.021, tp: 92, ms:30, ho:.968},
+    {id:'B4',lbl:'TX-114 Interchange', rsrp:-86, drop:.019, tp: 98, ms:28, ho:.971},
+    {id:'B5',lbl:'TX-114 West',        rsrp:-91, drop:.028, tp: 80, ms:35, ho:.960},
+    {id:'B6',lbl:'Keller / TX-114',    rsrp:-82, drop:.015, tp:112, ms:23, ho:.976},
+  ],
+  path:[[33.0401,-96.7296],[33.042,-96.802],[33.043,-96.882],[33.045,-96.962],
+        [33.048,-97.032],[33.020,-97.078],[33.009,-97.096],
+        [32.998,-97.142],[32.975,-97.182],[32.955,-97.218],[32.9343,-97.2291]],
+  tc:  [[33.042,-96.820],[33.045,-96.952],[33.048,-97.022],
+        [33.010,-97.092],[32.995,-97.152],[32.965,-97.202]],
+};
+
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+let curTime = 'midday';
+let kpis = new Set(['drop','tput','lat','hoff']);
+let charts = {};
+
+// ══════════════════════════════════════════════════════
+//  MAP INIT
+// ══════════════════════════════════════════════════════
+const map = L.map('map').setView([32.99,-97.00],10);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+L.polyline(RA.path,{color:RA.clr,weight:5,opacity:.85}).addTo(map);
+L.polyline(RB.path,{color:RB.clr,weight:5,opacity:.85,dashArray:'10,5'}).addTo(map);
+
+const pinIcon = (color,lbl) => L.divIcon({
+  html:`<div style="background:${color};color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)">${lbl}</div>`,
+  className:'',iconAnchor:[13,13]
+});
+L.marker([33.0401,-96.7296],{icon:pinIcon('#1b5e20','S')}).addTo(map)
+  .bindPopup('<b>🟢 START</b><br>Richardson, TX');
+L.marker([32.9343,-97.2291],{icon:pinIcon('#1b5e20','E')}).addTo(map)
+  .bindPopup('<b>🏁 END</b><br>Keller, TX');
+
+const mkTwr = (clr) => L.divIcon({
+  html:`<div style="background:${clr};border:2px solid #fff;border-radius:3px;width:11px;height:11px;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
+  className:'',iconAnchor:[5,5]
+});
+RA.towers.forEach((t,i)=>{
+  L.marker(RA.tc[i],{icon:mkTwr(RA.clr)}).addTo(map)
+   .bindPopup(`📡 <b>${t.id}</b> — ${t.lbl}<br>RSRP: ${t.rsrp} dBm &nbsp;|&nbsp; Base Drop: ${(t.drop*100).toFixed(1)}%<br>Base Tput: ${t.tp} Mbps &nbsp;|&nbsp; Latency: ${t.ms} ms`);
+});
+RB.towers.forEach((t,i)=>{
+  L.marker(RB.tc[i],{icon:mkTwr(RB.clr)}).addTo(map)
+   .bindPopup(`📡 <b>${t.id}</b> — ${t.lbl}<br>RSRP: ${t.rsrp} dBm &nbsp;|&nbsp; Base Drop: ${(t.drop*100).toFixed(1)}%<br>Base Tput: ${t.tp} Mbps &nbsp;|&nbsp; Latency: ${t.ms} ms`);
+});
+
+// ══════════════════════════════════════════════════════
+//  UI CONTROLS
+// ══════════════════════════════════════════════════════
+function selTime(btn){
+  document.querySelectorAll('.t-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  curTime = btn.dataset.t;
+  updTT();
+}
+function togKpi(el,k){
+  el.classList.toggle('on');
+  if(kpis.has(k)) kpis.delete(k); else kpis.add(k);
+}
+function swTab(name,btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('p'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
+  // special-case id mismatch for 'to'
+  if(name==='to') document.getElementById('pTo').classList.add('active');
+  if(name==='kpi') document.getElementById('pKpi').classList.add('active');
+  if(name==='drop') document.getElementById('pDrop').classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════
+//  SIMULATION ENGINE
+// ══════════════════════════════════════════════════════
+function simKpis(route){
+  const lf = TIMES[curTime].lf;
+  return route.towers.map(t=>({
+    id:   t.id,
+    lbl:  t.lbl,
+    drop: Math.min(t.drop * lf, 0.28),
+    tp:   t.tp / Math.sqrt(lf),
+    ms:   t.ms * Math.pow(lf, 0.72),
+    ho:   Math.max(t.ho - (lf-1)*0.013, 0.87),
+    rsrp: t.rsrp - (lf>1.8 ? 2.5 : 0),
+    sinr: Math.max(12 - lf*1.8, 0),
+  }));
+}
+
+function travelTime(route){
+  const sf = route===RA ? TIMES[curTime].sfA : TIMES[curTime].sfB;
+  const spd = route.spd * sf;
+  const mins = Math.round(route.mi/spd*60);
+  return { mins, spd:Math.round(spd) };
+}
+
+function cumDrop(kArr){
+  let p=1, out=[];
+  kArr.forEach(k=>{ p*=(1-k.drop); out.push(+(((1-p)*100).toFixed(3))); });
+  return out;
+}
+
+function avg(arr,fn){ return arr.reduce((s,x)=>s+fn(x),0)/arr.length; }
+
+function fmtMin(m){ return `${Math.floor(m/60)}h ${(m%60).toString().padStart(2,'0')}m`; }
+
+function updTT(){
+  const tA=travelTime(RA), tB=travelTime(RB);
+  document.getElementById('ttA').textContent = fmtMin(tA.mins);
+  document.getElementById('ttB').textContent = fmtMin(tB.mins);
+  document.getElementById('spA').textContent = `~${tA.spd} mph avg`;
+  document.getElementById('spB').textContent = `~${tB.spd} mph avg`;
+}
+
+// ══════════════════════════════════════════════════════
+//  CHARTS
+// ══════════════════════════════════════════════════════
+function mkChart(id,type,data,opts){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id).getContext('2d'),{type,data,options:opts});
+}
+
+const barOpts=(yLbl)=>({
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{position:'top',labels:{font:{size:11},padding:8}}},
+  scales:{
+    y:{title:{display:true,text:yLbl,font:{size:11}},beginAtZero:false,
+       ticks:{font:{size:10}}},
+    x:{title:{display:true,text:'Tower #',font:{size:11}},
+       ticks:{font:{size:10}}}
+  }
+});
+
+const PAD=(arr,n)=>[...arr,...Array(Math.max(0,n-arr.length)).fill(null)];
+
+function runSim(){
+  const kA = simKpis(RA);
+  const kB = simKpis(RB);
+  updTT();
+
+  const LABELS7 = ['T1','T2','T3','T4','T5','T6','T7'];
+  const dsA = (data,clr)=>({
+    label:'Route A', data:PAD(data,7),
+    backgroundColor:clr+'88',borderColor:clr,borderWidth:2,
+    borderRadius:5,barThickness:13
+  });
+  const dsB = (data,clr)=>({
+    label:'Route B', data:PAD(data,7),
+    backgroundColor:clr+'88',borderColor:clr,borderWidth:2,
+    borderRadius:5,barThickness:13
+  });
+
+  // ── Call Drop Rate ──
+  mkChart('cDrop','bar',{
+    labels:LABELS7,
+    datasets:[
+      dsA(kA.map(k=>+(k.drop*100).toFixed(3)),'#e53935'),
+      dsB(kB.map(k=>+(k.drop*100).toFixed(3)),'#b71c1c'),
+    ]
+  }, barOpts('Drop Rate (%)'));
+
+  // ── Throughput ──
+  mkChart('cTput','bar',{
+    labels:LABELS7,
+    datasets:[
+      dsA(kA.map(k=>+k.tp.toFixed(1)),'#1565c0'),
+      dsB(kB.map(k=>+k.tp.toFixed(1)),'#0d47a1'),
+    ]
+  }, barOpts('Throughput (Mbps)'));
+
+  // ── Latency ──
+  mkChart('cLat','bar',{
+    labels:LABELS7,
+    datasets:[
+      dsA(kA.map(k=>+k.ms.toFixed(1)),'#f57c00'),
+      dsB(kB.map(k=>+k.ms.toFixed(1)),'#e65100'),
+    ]
+  }, barOpts('Latency (ms)'));
+
+  // ── Handoff Success ──
+  mkChart('cHoff','bar',{
+    labels:LABELS7,
+    datasets:[
+      dsA(kA.map(k=>+(k.ho*100).toFixed(2)),'#2e7d32'),
+      dsB(kB.map(k=>+(k.ho*100).toFixed(2)),'#1b5e20'),
+    ]
+  }, barOpts('Handoff SR (%)'));
+
+  // ── Cumulative Call Drop ──
+  const cumA = cumDrop(kA);
+  const cumB = cumDrop(kB);
+  const maxT = Math.max(cumA.length, cumB.length);
+  const tLabels = Array.from({length:maxT},(_,i)=>`T${i+1}`);
+
+  mkChart('cCum','line',{
+    labels:tLabels,
+    datasets:[
+      { label:'Route A — Cum P(drop)',
+        data:PAD(cumA,maxT).map(v=>v!==null?v:null),
+        borderColor:'#1565c0',backgroundColor:'#1565c018',
+        fill:true,tension:.4,pointRadius:6,pointHoverRadius:9,borderWidth:3 },
+      { label:'Route B — Cum P(drop)',
+        data:PAD(cumB,maxT).map(v=>v!==null?v:null),
+        borderColor:'#b71c1c',backgroundColor:'#b71c1c18',
+        fill:true,tension:.4,pointRadius:6,pointHoverRadius:9,borderWidth:3 }
+    ]
+  },{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:11}}},
+      tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`}}},
+    scales:{
+      y:{title:{display:true,text:'Cumulative P(call drop) %',font:{size:11}},min:0},
+      x:{title:{display:true,text:'Tower Checkpoint',font:{size:11}}}
+    }
+  });
+
+  // ── Radar ──
+  // Normalized scores 0–100: higher = better
+  const norm=(v,lo,hi,higherBetter)=>{
+    const sc=(v-lo)/(hi-lo)*100;
+    return Math.max(0,Math.min(100, higherBetter?sc:100-sc));
+  };
+  const radarScore=(kArr)=>({
+    drop: norm(avg(kArr,k=>k.drop)*100,  1, 28, false),   // lower drop = better
+    tput: norm(avg(kArr,k=>k.tp),        30,140, true),
+    ms:   norm(avg(kArr,k=>k.ms),        20,100, false),   // lower latency = better
+    ho:   norm(avg(kArr,k=>k.ho)*100,    87, 99, true),
+    rsrp: norm(avg(kArr,k=>k.rsrp),    -100,-70, true),    // less negative = better
+    sinr: norm(avg(kArr,k=>k.sinr),       0,  12, true),
+  });
+  const sA=radarScore(kA), sB=radarScore(kB);
+  const rLbls=['Low Drop','Throughput','Low Latency','Handoff SR','RSRP','SINR'];
+
+  mkChart('cRadar','radar',{
+    labels:rLbls,
+    datasets:[
+      {label:'Route A',
+       data:[sA.drop,sA.tput,sA.ms,sA.ho,sA.rsrp,sA.sinr],
+       borderColor:'#1565c0',backgroundColor:'#1565c025',borderWidth:2.5,pointRadius:5},
+      {label:'Route B',
+       data:[sB.drop,sB.tput,sB.ms,sB.ho,sB.rsrp,sB.sinr],
+       borderColor:'#b71c1c',backgroundColor:'#b71c1c25',borderWidth:2.5,pointRadius:5},
+    ]
+  },{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:11}}}},
+    scales:{r:{min:0,max:100,ticks:{stepSize:20,font:{size:9}},
+               pointLabels:{font:{size:11}}}}
+  });
+
+  // ── Trade-off Table ──
+  const tA=travelTime(RA), tB=travelTime(RB);
+  const avgDropA = avg(kA,k=>k.drop)*100;
+  const avgDropB = avg(kB,k=>k.drop)*100;
+  const avgTpA = avg(kA,k=>k.tp);
+  const avgTpB = avg(kB,k=>k.tp);
+  const avgMsA = avg(kA,k=>k.ms);
+  const avgMsB = avg(kB,k=>k.ms);
+  const avgHoA = avg(kA,k=>k.ho)*100;
+  const avgHoB = avg(kB,k=>k.ho)*100;
+  const cumFA = cumA[cumA.length-1];
+  const cumFB = cumB[cumB.length-1];
+
+  const win=(vA,vB,lowerBetter)=>{
+    const diff=Math.abs(vA-vB);
+    if(diff<0.4) return `<span class="badge bt">TIE</span>`;
+    return (lowerBetter ? vA<vB : vA>vB)
+      ? `<span class="badge ba">Route A</span>`
+      : `<span class="badge bb">Route B</span>`;
+  };
+
+  const rows=[
+    ['Travel Time (min)', fmtMin(tA.mins), fmtMin(tB.mins), win(tA.mins,tB.mins,true)],
+    ['Distance (mi)',`${RA.mi}`,`${RB.mi}`,win(RA.mi,RB.mi,true)],
+    ['Avg Call Drop Rate (%)', `${avgDropA.toFixed(2)}%`, `${avgDropB.toFixed(2)}%`, win(avgDropA,avgDropB,true)],
+    ['Cum P(call drop) end-to-end', `${cumFA.toFixed(2)}%`, `${cumFB.toFixed(2)}%`, win(cumFA,cumFB,true)],
+    ['Avg DL Throughput (Mbps)', `${avgTpA.toFixed(1)}`, `${avgTpB.toFixed(1)}`, win(avgTpA,avgTpB,false)],
+    ['Avg Latency (ms)', `${avgMsA.toFixed(1)}`, `${avgMsB.toFixed(1)}`, win(avgMsA,avgMsB,true)],
+    ['Avg Handoff SR (%)', `${avgHoA.toFixed(2)}%`, `${avgHoB.toFixed(2)}%`, win(avgHoA,avgHoB,false)],
+    ['# LTE Towers on Route', `${kA.length}`, `${kB.length}`, win(kA.length,kB.length,false)],
+    ['SINR score (0-12 dB)', `${avg(kA,k=>k.sinr).toFixed(1)}`, `${avg(kB,k=>k.sinr).toFixed(1)}`, win(avg(kA,k=>k.sinr),avg(kB,k=>k.sinr),false)],
+  ];
+
+  document.getElementById('toBody').innerHTML = rows.map(([m,vA,vB,w])=>`
+    <tr>
+      <td><b>${m}</b></td>
+      <td><span class="mv-a">${vA}</span></td>
+      <td><span class="mv-b">${vB}</span></td>
+      <td>${w}</td>
+    </tr>`).join('');
+
+  // Verdict logic
+  const timeW  = tA.mins <= tB.mins  ? 'A':'B';
+  const dropW  = cumFA   <= cumFB    ? 'A':'B';
+  const tputW  = avgTpA  >= avgTpB   ? 'A':'B';
+  const latW   = avgMsA  <= avgMsB   ? 'A':'B';
+  const wins   = [timeW,dropW,tputW,latW];
+  const scoreA = wins.filter(w=>w==='A').length;
+  const timeStr = TIMES[curTime].lbl;
+
+  let vtxt='';
+  if(scoreA>=3){
+    vtxt=`During <b>${timeStr}</b>, <b>Route A (US-75 → I-635 → I-35W)</b> wins on ${scoreA}/4 metrics. `
+        +`It offers ${tA.mins<tB.mins?`faster travel (${fmtMin(tA.mins)} vs ${fmtMin(tB.mins)}) and `:''}lower cumulative call-drop risk `
+        +`(${cumFA.toFixed(1)}% vs ${cumFB.toFixed(1)}%) thanks to its denser tower deployment. `
+        +`<b>Recommended for voice calls and video meetings.</b>`;
+  } else if(scoreA<=1){
+    vtxt=`During <b>${timeStr}</b>, <b>Route B (TX-190 → TX-114)</b> wins on ${4-scoreA}/4 metrics. `
+        +`Lighter traffic and suburban cell density yield faster travel (${fmtMin(tB.mins)} vs ${fmtMin(tA.mins)}) `
+        +`and higher throughput (${avgTpB.toFixed(0)} vs ${avgTpA.toFixed(0)} Mbps). `
+        +`However, its longer inter-tower gaps can cause higher drop probability in weak spots (TX-114 West). `
+        +`<b>Recommended for data-intensive apps; use Route A if call reliability is critical.</b>`;
+  } else {
+    vtxt=`During <b>${timeStr}</b>, the routes trade blows. `
+        +`<b>Route ${timeW}</b> wins on travel time (${fmtMin(tA.mins)} vs ${fmtMin(tB.mins)}). `
+        +`<b>Route ${dropW}</b> wins on call reliability (cum drop ${dropW==='A'?cumFA.toFixed(1):cumFB.toFixed(1)}%). `
+        +`<b>Route ${tputW}</b> wins on throughput. `
+        +`→ Choose <b>Route ${dropW}</b> for voice/video calls; choose <b>Route ${timeW}</b> to minimize drive time.`;
+  }
+  document.getElementById('vText').innerHTML = vtxt;
+}
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+updTT();
+runSim();
+</script>
+</body>
+</html>
