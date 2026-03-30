@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LTE outage recovery — A-cell prioritization</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <style>
+    :root {
+      --bg: #b8d9f0;
+      --panel: #e8f4fc;
+      --text: #1a2a36;
+      --muted: #4a6578;
+      --accent: #1565a0;
+      --danger: #b71c1c;
+      --a-color: #c62828;
+      --b-color: #2e7d32;
+      --border: #7eb8d9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    header {
+      padding: 1rem 1.25rem;
+      background: rgba(255,255,255,0.35);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 650;
+    }
+    .btn {
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: #fff;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn:hover { background: #e3f2fd; }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    #btn-help {
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      border: 1px solid #0d47a1;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #4dabf7 0%, #1976d2 42%, #0d47a1 100%);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+        0 4px 0 #082f6b,
+        0 6px 10px rgba(8, 47, 107, 0.45);
+      text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.2);
+      transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.12s ease;
+    }
+    #btn-help:hover {
+      background: linear-gradient(180deg, #74c0fc 0%, #2196f3 42%, #1565c0 100%);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+        0 4px 0 #082f6b,
+        0 7px 14px rgba(8, 47, 107, 0.5);
+      filter: brightness(1.03);
+    }
+    #btn-help:active {
+      transform: translateY(3px);
+      box-shadow:
+        inset 0 2px 6px rgba(0, 0, 0, 0.35),
+        0 1px 0 #061e47,
+        0 2px 5px rgba(8, 47, 107, 0.35);
+    }
+    main {
+      padding: 1rem 1.25rem 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .panel h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1rem;
+      color: var(--muted);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 960px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    label.row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+    label.row span.label { min-width: 140px; font-size: 0.88rem; }
+    input[type="range"] { flex: 1; min-width: 120px; max-width: 280px; }
+    .weight-val { width: 3rem; font-variant-numeric: tabular-nums; font-size: 0.85rem; color: var(--muted); }
+    .time-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+    #map {
+      height: 440px;
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      z-index: 0;
+    }
+    .cell-marker-wrap {
+      background: transparent !important;
+      border: none !important;
+    }
+    .cell-marker-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .cell-marker-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+      flex-shrink: 0;
+    }
+    .cell-marker-id {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0d1b26;
+      line-height: 1.1;
+      white-space: nowrap;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(0,0,0,0.2);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+    .map-caption {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0.5rem 0 0;
+    }
+    #sankey-wrap {
+      width: 100%;
+      overflow-x: auto;
+      background: #fafcff;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 0.5rem 0;
+    }
+    #sankey-svg {
+      display: block;
+      min-width: 720px;
+      width: 100%;
+      height: auto;
+    }
+    #sankey-svg .node-rect { stroke: #fff; stroke-width: 1.5px; }
+    #sankey-svg .node-label { font-size: 11px; fill: #1a2a36; font-family: system-ui, sans-serif; pointer-events: none; }
+    #sankey-svg .time-label { font-size: 10px; fill: var(--muted); font-family: system-ui, sans-serif; }
+    #sankey-svg .link-path { stroke: none; opacity: 0.55; }
+    #sankey-svg .link-path:hover { opacity: 0.85; }
+    #kpi-ts-wrap {
+      width: 100%;
+      overflow-x: auto;
+      background: #fafcff;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-top: 0.5rem;
+    }
+    #kpi-ts-svg {
+      display: block;
+      width: 100%;
+      min-width: 640px;
+      height: auto;
+    }
+    #kpi-ts-svg .kpi-grid { stroke: #c5dce8; stroke-width: 1; }
+    #kpi-ts-svg .kpi-axis { font-size: 10px; fill: var(--muted); font-family: system-ui, sans-serif; }
+    #kpi-ts-svg .kpi-cursor { stroke: var(--accent); stroke-width: 2; opacity: 0.9; pointer-events: none; }
+    #kpi-ts-svg .kpi-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    #kpi-ts-svg .kpi-dot { pointer-events: none; }
+    .kpi-ts-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 1rem;
+      font-size: 0.78rem;
+      margin-top: 0.6rem;
+      padding: 0 0.25rem;
+      color: var(--text);
+    }
+    .kpi-ts-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .kpi-ts-legend i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .leaflet-popup-content { margin: 10px 12px; font-size: 0.88rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.5rem;
+      text-align: right;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    th { background: rgba(21,101,160,0.12); }
+    tr.type-a { background: rgba(198,40,40,0.06); }
+    tr.type-b { background: rgba(46,125,50,0.06); }
+    .na { color: var(--muted); font-style: italic; }
+    .delta-pos { color: var(--danger); }
+    .rank-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .rank-list li {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .rank-list li:last-child { border-bottom: none; }
+    .rank-score { font-weight: 600; color: var(--accent); }
+    .msg-error { color: var(--danger); font-size: 0.9rem; margin-top: 0.5rem; }
+    .msg-ok { color: var(--b-color); font-size: 0.9rem; margin-top: 0.5rem; }
+    .replay-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+    .map-panel-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 0.5rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .map-panel-header > h2 {
+      margin: 0;
+      justify-self: start;
+    }
+    .map-panel-header .map-basemap-inline {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-self: center;
+      margin: 0;
+    }
+    .map-panel-header .map-basemap-inline .label {
+      min-width: auto;
+      font-size: 0.88rem;
+    }
+    .map-panel-header .map-basemap-inline select {
+      max-width: min(100%, 22rem);
+    }
+    .map-panel-header .data-source-topline {
+      justify-self: end;
+    }
+    @media (max-width: 800px) {
+      .map-panel-header {
+        grid-template-columns: 1fr;
+        justify-items: stretch;
+      }
+      .map-panel-header > h2 { justify-self: start; }
+      .map-panel-header .map-basemap-inline { justify-self: start; }
+      .map-panel-header .data-source-topline { justify-self: start; }
+    }
+    .data-source-topline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 1rem;
+      margin: 0;
+    }
+    .data-source-topline h2 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 650;
+      color: var(--muted);
+    }
+    .data-source-topline .mode-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: #fff;
+      max-width: 680px;
+      max-height: 85vh;
+      overflow: auto;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .modal h2 { margin-top: 0; font-size: 1.1rem; }
+    .modal h3 { font-size: 0.95rem; margin: 1rem 0 0.35rem; }
+    .modal p, .modal li { font-size: 0.9rem; color: #333; }
+    .modal code { font-size: 0.82rem; background: #eee; padding: 0.1rem 0.3rem; border-radius: 4px; }
+    .modal pre {
+      background: #f5f5f5;
+      padding: 0.75rem;
+      border-radius: 8px;
+      overflow: auto;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LTE outage recovery — which A-cell to restore first?</h1>
+    <button type="button" class="btn" id="btn-help">HELP</button>
+  </header>
+  <main>
+    <div class="panel">
+      <div class="map-panel-header">
+        <h2>Street map & cell sites</h2>
+        <label class="map-basemap-inline">
+          <span class="label">Basemap</span>
+          <select id="map-basemap" title="Raster tiles from CARTO (basemaps.cartocdn.com), not tile.openstreetmap.org.">
+            <option value="osm" selected>Terrain / wooded look (CARTO Voyager)</option>
+            <option value="carto">Light (CARTO Positron)</option>
+          </select>
+        </label>
+        <div class="data-source-topline">
+          <h2>Data source</h2>
+          <label class="mode-inline">
+            <span class="label" style="min-width:auto;">Mode</span>
+            <select id="data-source">
+              <option value="synthetic" selected>Synthetic</option>
+              <option value="json">Upload JSON</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div id="json-upload-wrap" style="display:none; margin-top:0.5rem;">
+        <label class="row">
+          <span class="label">JSON file</span>
+          <input type="file" id="json-file" accept=".json,application/json" />
+        </label>
+        <p class="msg-ok" id="json-status" style="display:none;"></p>
+        <p class="msg-error" id="json-error" style="display:none;"></p>
+      </div>
+      <p class="map-caption">Synthetic scenario: <strong>Waterbury–Stowe corridor, Vermont</strong> (northeast US, wooded terrain). Red = A-cells (down); green = B-cells (up). <strong>Cell IDs</strong> are always shown under each marker.</p>
+      <div id="map" role="application" aria-label="Cell site map"></div>
+      <p class="map-caption" id="map-attrib" style="margin-top:0.35rem;"></p>
+    </div>
+
+    <div class="panel">
+      <h2>Sankey / alluvial — one A-cell’s traffic over time</h2>
+      <p style="font-size:0.85rem;color:var(--muted);margin:0 0 0.75rem;">Pick <strong>one</strong> down A-cell. Columns are times <code>t<sub>0</sub>=0</code>, <code>t<sub>1</sub>=Δ</code>, <code>t<sub>2</sub>=2Δ</code>, … Ribbon width = share of that A’s traffic. First hop <strong>A → B<sub>i</sub></strong> uses <em>m<sub>ab</sub>(t)=π<sub>ab</sub>(1−e<sup>−t/τ</sup>)</em>. Later columns are <strong>B<sub>i</sub> → B<sub>j</sub></strong> (load reshuffle / secondary reselection) using a distance-based Markov kernel on B-cells, then a mass-matching step so node sizes match the ODE at each <code>t<sub>k</sub></code>.</p>
+      <label class="row">
+        <span class="label">A-cell (down only)</span>
+        <select id="sankey-a-select"></select>
+      </label>
+      <label class="row">
+        <span class="label">Stage interval Δ</span>
+        <select id="sankey-delta">
+          <option value="10">10 minutes</option>
+          <option value="15" selected>15 minutes</option>
+          <option value="20">20 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="45">45 minutes</option>
+        </select>
+      </label>
+      <label class="row">
+        <span class="label">Stages (B columns)</span>
+        <input type="range" id="sankey-stages" min="2" max="6" value="4" step="1" />
+        <span class="weight-val" id="sankey-stages-val">4</span>
+      </label>
+      <p style="font-size:0.8rem;color:var(--muted);margin:0.25rem 0 0.5rem;">Total diagram times: 0, Δ, …, <span id="sankey-kmax-label">45</span> min (plus pre-outage column for A).</p>
+      <div id="sankey-wrap">
+        <svg id="sankey-svg" viewBox="0 0 920 340" preserveAspectRatio="xMidYMid meet" aria-label="Sankey flow for selected A-cell"></svg>
+      </div>
+    </div>
+
+    <div class="panel" id="kpi-ts-panel">
+      <h2>B-cell KPI time series — <span id="kpi-plot-heading-metric">Energy</span></h2>
+      <p style="font-size:0.85rem;color:var(--muted);margin:0 0 0.75rem;">Uses the <strong>same</strong> scenario clock as the time slider (0–120 min): <code>t = 0</code> is pre-outage; each curve is one B-cell. The blue vertical line is the <strong>current</strong> slider time — aligned with Sankey’s <code>t<sub>i</sub> = i·Δ</code> on the same timeline (minutes after outage start).</p>
+      <label class="row">
+        <span class="label">KPI to plot</span>
+        <select id="kpi-plot-metric" aria-label="KPI for time series plot"></select>
+      </label>
+      <div id="kpi-ts-wrap">
+        <svg id="kpi-ts-svg" viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet" aria-label="B-cell KPI time series"></svg>
+      </div>
+      <div id="kpi-ts-legend" class="kpi-ts-legend" aria-label="Series legend"></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h2>Scenario time & replay</h2>
+        <label class="row">
+          <span class="label" id="time-slider-label">Pre-outage</span>
+        </label>
+        <input type="range" id="time-slider" min="0" max="120" value="0" step="1" />
+        <div class="time-labels" id="time-ticks"></div>
+        <div class="replay-row">
+          <button type="button" class="btn btn-primary" id="btn-play">Play</button>
+          <button type="button" class="btn" id="btn-pause">Pause</button>
+          <button type="button" class="btn" id="btn-reset-time">Reset time</button>
+          <label class="row" style="margin:0;">
+            <span class="label">Speed</span>
+            <select id="replay-speed">
+              <option value="0.5">0.5×</option>
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="4">4×</option>
+            </select>
+          </label>
+        </div>
+        <p style="font-size:0.82rem;color:var(--muted);margin:0.75rem 0 0;">B-cell KPIs follow the <strong>same</strong> time axis: as more traffic lands on each B (curves above), metrics move from baseline toward the stressed plateau. τ = <span id="tau-display">22</span> min (adjustable below).</p>
+        <label class="row" style="margin-top:0.75rem;">
+          <span class="label">Relaxation τ (min)</span>
+          <input type="range" id="tau-slider" min="8" max="45" value="22" step="1" />
+          <span class="weight-val" id="tau-val">22</span>
+        </label>
+      </div>
+      <div class="panel">
+        <h2>Scoring weights</h2>
+        <p style="font-size:0.82rem;color:var(--muted);margin:0 0 0.5rem;">Higher weight = that KPI matters more for B-cell stress.</p>
+        <div id="weight-sliders"></div>
+        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button type="button" class="btn" id="preset-equal">Equal weights</button>
+          <button type="button" class="btn" id="preset-voice">Voice-centric</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h2>Cells at selected time</h2>
+        <div style="overflow:auto;max-height:420px;">
+          <table id="cell-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Restore priority (down A-cells)</h2>
+        <ol class="rank-list" id="rank-list"></ol>
+        <button type="button" class="btn btn-primary" id="btn-restore" style="margin-top:0.75rem;">Simulate restore top A-cell</button>
+        <p style="font-size:0.82rem;color:var(--muted);margin:0.5rem 0 0;">Recomputes migration targets and B plateaus for remaining down A-cells.</p>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-backdrop" id="modal-help" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="modal">
+      <h2 id="help-title">Help</h2>
+      <h3>Map</h3>
+      <p>The basemap uses <strong>OpenStreetMap data</strong> rendered by <strong>CARTO</strong> raster tiles (<code>basemaps.cartocdn.com</code>); the app does not use <code>tile.openstreetmap.org</code>. Choose <strong>Voyager</strong> for a greener / terrain-style map or <strong>Positron (light)</strong> for a light basemap. Cell markers are <strong>synthetic</strong> site placements; each marker shows its <strong>cell id</strong> under the dot. Popups still include the longer location text.</p>
+      <h3>Traffic dynamics (not physical UE motion)</h3>
+      <p>UEs are not drawn moving on the map. The <strong>Sankey / alluvial</strong> chart uses one selected down A-cell. Columns are times <code>t<sub>k</sub> = kΔ</code> after outage. First column is traffic still attributed to A; then <code>A → B<sub>i</sub></code> flows from <code>m<sub>ab</sub>(t) = π<sub>ab</sub>(1 − e<sup>−t/τ</sup>)</code>. Between later columns, flows <code>B<sub>i</sub> → B<sub>j</sub></code> approximate reshuffling (secondary camping / idle mobility) using a distance kernel on B-sites, with a mass adjustment so each B strip matches the ODE at that time.</p>
+      <h3>KPIs vs time</h3>
+      <p>Each B-cell’s KPIs interpolate from <strong>baseline</strong> to a <strong>stressed plateau</strong> as the <strong>fraction of equilibrium load</strong> that has arrived on that B at time <code>t</code> increases (with a mild transient bump). Scoring uses the same <code>t</code> as the time slider / replay. The <strong>B-cell KPI time series</strong> chart (below Sankey) plots one selected KPI for every B-cell over <code>t = 0…120</code> min with a vertical cursor at the current slider time — the same timeline as Sankey’s <code>t<sub>i</sub> = i·Δ</code> (minutes after outage).</p>
+      <h3>Replay</h3>
+      <p><strong>Play</strong> advances scenario time automatically; <strong>Pause</strong> stops; <strong>Reset time</strong> returns to pre-outage. Scrub the slider anytime.</p>
+      <h3>JSON</h3>
+      <p>Cells may include <code>lat</code>, <code>lng</code> (degrees) for the map; otherwise legacy <code>x</code>,<code>y</code> in 0–100 are used only for the migration diagram. See prior schema for <code>baseline</code> / <code>plateau</code>.</p>
+      <h3>Related patent</h3>
+      <p><a href="https://patentsgazette.uspto.gov/week02/OG/html/1542-2/US12524031-20260113.html" target="_blank" rel="noopener">US Patent 12524031</a> — Systems and methods for prioritizing power restoration to sites after a power outage; Inventors: Farid Khafizov; Jean Rosebert Beaublanc; Halley David Allred; Muhammad Ibraheem.</p>
+      <button type="button" class="btn btn-primary" id="help-close" style="margin-top:1rem;">Close</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+(function () {
+  var _px = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  if (typeof L !== 'undefined' && L.Icon && L.Icon.Default) {
+    L.Icon.Default.mergeOptions({
+      iconUrl: _px,
+      iconRetinaUrl: _px,
+      shadowUrl: _px,
+      iconSize: [1, 1],
+      iconAnchor: [0, 0],
+      shadowSize: [0, 0],
+      shadowAnchor: [0, 0],
+      popupAnchor: [0, 0]
+    });
+  }
+})();
+  </script>
+  <script>
+(function () {
+  'use strict';
+
+  const KPI_KEYS = [
+    'energy', 'callDropRate', 'uplinkThroughput', 'downlinkThroughput',
+    'rrcAttempts', 'erabSetupSuccessRate', 'latencyMs', 'handoverFailures'
+  ];
+
+  const KPI_LABELS = {
+    energy: 'Energy',
+    callDropRate: 'Call drop %',
+    uplinkThroughput: 'UL tput',
+    downlinkThroughput: 'DL tput',
+    rrcAttempts: 'RRC attempts',
+    erabSetupSuccessRate: 'ERAB setup %',
+    latencyMs: 'Latency ms',
+    handoverFailures: 'HO failures'
+  };
+
+  const HIGHER_WORSE = {
+    energy: true,
+    callDropRate: true,
+    uplinkThroughput: false,
+    downlinkThroughput: false,
+    rrcAttempts: true,
+    erabSetupSuccessRate: false,
+    latencyMs: true,
+    handoverFailures: true
+  };
+
+  const TICK_MARKS = [0, 15, 30, 45, 60, 90, 120];
+
+  function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+
+  function smoothstep(t) {
+    t = clamp(t, 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+
+  function hashStr(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
+    return Math.abs(h);
+  }
+
+  function rnd(id, salt) {
+    const x = Math.sin(hashStr(id + salt)) * 10000;
+    return x - Math.floor(x);
+  }
+
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function defaultBaselineB(id) {
+    return {
+      energy: 100 + rnd(id, 'e') * 40,
+      callDropRate: 0.5 + rnd(id, 'c') * 1.2,
+      uplinkThroughput: 85 + rnd(id, 'u') * 35,
+      downlinkThroughput: 80 + rnd(id, 'd') * 35,
+      rrcAttempts: 480 + rnd(id, 'r') * 350,
+      erabSetupSuccessRate: 97 + rnd(id, 'a') * 2.2,
+      latencyMs: 22 + rnd(id, 'l') * 25,
+      handoverFailures: 2 + rnd(id, 'h') * 8
+    };
+  }
+
+  /**
+   * Synthetic sites: Waterbury–Stowe VT corridor (wooded NE US, roads from OSM context).
+   */
+  const SYNTHETIC_SITES = [
+    { id: 'A1', type: 'A', lat: 44.4289, lng: -72.7321, name: 'A1 — Waterbury Stowe Rd', locationLabel: 'US-2 / Brook Rd ridge, Waterbury' },
+    { id: 'A2', type: 'A', lat: 44.4412, lng: -72.7088, name: 'A2 — Middlesex gap', locationLabel: 'VT-100, Middlesex–Worcester line' },
+    { id: 'A3', type: 'A', lat: 44.4567, lng: -72.7210, name: 'A3 — Moscow area', locationLabel: 'VT-100, Stowe side valley' },
+    { id: 'A4', type: 'A', lat: 44.4495, lng: -72.6895, name: 'A4 — Worcester Mt view', locationLabel: 'Worcester Range foothill' },
+    { id: 'A5', type: 'A', lat: 44.4238, lng: -72.7012, name: 'A5 — Duxbury hill', locationLabel: 'Duxbury, I-89 corridor shadow' },
+    { id: 'B1', type: 'B', lat: 44.4920, lng: -72.7180, name: 'B1 — Wolcott uplink', locationLabel: 'Wolcott, VT-15 ridge' },
+    { id: 'B2', type: 'B', lat: 44.4785, lng: -72.6740, name: 'B2 — Elmore tower', locationLabel: 'Elmore, Lake Elmore sector' },
+    { id: 'B3', type: 'B', lat: 44.5120, lng: -72.6950, name: 'B3 — Hyde Park', locationLabel: 'Hyde Park, Lamoille R. valley' },
+    { id: 'B4', type: 'B', lat: 44.4658, lng: -72.6510, name: 'B4 — Plainfield sector', locationLabel: 'Plainfield, I-89 east' },
+    { id: 'B5', type: 'B', lat: 44.3980, lng: -72.7280, name: 'B5 — Waterbury village', locationLabel: 'Waterbury center / US-2' },
+    { id: 'B6', type: 'B', lat: 44.3820, lng: -72.6980, name: 'B6 — Waterbury I-89', locationLabel: 'I-89 / US-2 interchange area' },
+    { id: 'B7', type: 'B', lat: 44.4050, lng: -72.7650, name: 'B7 — Duxbury low', locationLabel: 'Winooski R. corridor, Duxbury' },
+    { id: 'B8', type: 'B', lat: 44.5180, lng: -72.7420, name: 'B8 — Johnson', locationLabel: 'Johnson, VT-100 north' },
+    { id: 'B9', type: 'B', lat: 44.4370, lng: -72.6680, name: 'B9 — East Montpelier', locationLabel: 'East Montpelier hill' },
+    { id: 'B10', type: 'B', lat: 44.3360, lng: -72.7560, name: 'B10 — Moretown', locationLabel: 'Moretown, Mad River valley' }
+  ];
+
+  function geoToXY(lat, lng, bounds) {
+    const t = (lat - bounds.minLat) / (bounds.maxLat - bounds.minLat || 1);
+    const u = (lng - bounds.minLng) / (bounds.maxLng - bounds.minLng || 1);
+    return { x: 8 + u * 84, y: 92 - t * 84 };
+  }
+
+  function computeBounds(cells) {
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    for (const c of cells) {
+      const lat = c.lat != null ? c.lat : 44.45 + (c.x - 50) * 0.002;
+      const lng = c.lng != null ? c.lng : -72.70 + (c.y - 50) * 0.002;
+      minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat);
+      minLng = Math.min(minLng, lng); maxLng = Math.max(maxLng, lng);
+    }
+    const pad = 0.012;
+    return { minLat: minLat - pad, maxLat: maxLat + pad, minLng: minLng - pad, maxLng: maxLng + pad };
+  }
+
+  function ensureXY(cells) {
+    const b = computeBounds(cells);
+    for (const c of cells) {
+      if (c.lat == null || c.lng == null) continue;
+      const xy = geoToXY(c.lat, c.lng, b);
+      c.x = xy.x;
+      c.y = xy.y;
+    }
+  }
+
+  function buildNeighborsFromGeo(cells) {
+    const as = cells.filter(c => c.type === 'A');
+    const bs = cells.filter(c => c.type === 'B');
+    for (const a of as) {
+      const alat = a.lat != null ? a.lat : 44.45;
+      const alng = a.lng != null ? a.lng : -72.70;
+      const weights = bs.map(b => {
+        const blat = b.lat != null ? b.lat : 44.45;
+        const blng = b.lng != null ? b.lng : -72.70;
+        const d = haversineKm(alat, alng, blat, blng) + 0.25;
+        return { targetId: b.id, w: 1 / (d * d) };
+      });
+      const sum = weights.reduce((s, x) => s + x.w, 0);
+      a.neighbors = weights.map(x => ({ targetId: x.targetId, weight: x.w / sum }));
+    }
+    for (const b of bs) b.neighbors = b.neighbors || [];
+  }
+
+  function generateSyntheticCells() {
+    const cells = SYNTHETIC_SITES.map(s => {
+      if (s.type === 'B') {
+        return {
+          id: s.id,
+          name: s.name,
+          type: 'B',
+          lat: s.lat,
+          lng: s.lng,
+          locationLabel: s.locationLabel,
+          baseline: defaultBaselineB(s.id),
+          plateau: null,
+          plateauUser: false,
+          neighbors: []
+        };
+      }
+      return {
+        id: s.id,
+        name: s.name,
+        type: 'A',
+        lat: s.lat,
+        lng: s.lng,
+        locationLabel: s.locationLabel,
+        neighbors: []
+      };
+    });
+    buildNeighborsFromGeo(cells);
+    ensureXY(cells);
+    return { cells, downAIds: cells.filter(c => c.type === 'A').map(c => c.id) };
+  }
+
+  function computePlateausFromMigration(state) {
+    const { cells, downAIds } = state;
+    const downSet = new Set(downAIds);
+    const bs = cells.filter(c => c.type === 'B');
+
+    for (const b of bs) {
+      if (b.plateauUser) continue;
+      let load = 0;
+      for (const a of cells) {
+        if (a.type !== 'A' || !downSet.has(a.id)) continue;
+        const n = (a.neighbors || []).find(x => x.targetId === b.id);
+        if (n) load += n.weight;
+      }
+      const bl = b.baseline;
+      const factor = 0.35 + load * 0.95;
+      const jitter = 0.85 + rnd(b.id, 'pk') * 0.35;
+      b.plateau = {
+        energy: bl.energy + (25 + rnd(b.id, 'p1') * 35) * factor * jitter,
+        callDropRate: bl.callDropRate + (1.5 + rnd(b.id, 'p2') * 4) * factor * jitter,
+        uplinkThroughput: bl.uplinkThroughput * (1 - (0.08 + rnd(b.id, 'p3') * 0.22) * factor * jitter),
+        downlinkThroughput: bl.downlinkThroughput * (1 - (0.1 + rnd(b.id, 'p4') * 0.2) * factor * jitter),
+        rrcAttempts: bl.rrcAttempts + (120 + rnd(b.id, 'p5') * 380) * factor * jitter,
+        erabSetupSuccessRate: bl.erabSetupSuccessRate - (0.4 + rnd(b.id, 'p6') * 2.8) * factor * jitter,
+        latencyMs: bl.latencyMs + (8 + rnd(b.id, 'p7') * 35) * factor * jitter,
+        handoverFailures: bl.handoverFailures + (5 + rnd(b.id, 'p8') * 35) * factor * jitter
+      };
+    }
+  }
+
+  function migrateFractionAtT(piAb, tMin, tau) {
+    if (tMin <= 0) return 0;
+    return piAb * (1 - Math.exp(-tMin / tau));
+  }
+
+  function loadOnBAtT(state, bId, tMin, tau) {
+    const downSet = new Set(state.downAIds);
+    let s = 0;
+    for (const a of state.cells) {
+      if (a.type !== 'A' || !downSet.has(a.id)) continue;
+      const n = (a.neighbors || []).find(x => x.targetId === bId);
+      if (!n) continue;
+      s += migrateFractionAtT(n.weight, tMin, tau);
+    }
+    return s;
+  }
+
+  function equilibriumLoadOnB(state, bId) {
+    return loadOnBAtT(state, bId, Infinity, 1);
+  }
+
+  function kpiBlendRatio(state, b, tMin, tau) {
+    if (tMin <= 0) return 0;
+    const leq = equilibriumLoadOnB(state, b.id);
+    const lt = loadOnBAtT(state, b.id, tMin, tau);
+    if (leq < 1e-9) return 0;
+    let r = clamp(lt / leq, 0, 1);
+    const bump = 0.1 * Math.sin(Math.PI * r) * (1 - r);
+    return clamp(r + bump, 0, 1.12);
+  }
+
+  function bValueAtTime(b, state, tMin, tau) {
+    if (tMin <= 0) {
+      const out = {};
+      for (const k of KPI_KEYS) out[k] = b.baseline[k];
+      return out;
+    }
+    const f = kpiBlendRatio(state, b, tMin, tau);
+    const bl = b.baseline;
+    const pl = b.plateau || bl;
+    const out = {};
+    for (const k of KPI_KEYS) {
+      out[k] = bl[k] + (pl[k] - bl[k]) * f;
+    }
+    return out;
+  }
+
+  function migrateShareToB(state, aId, bId, tMin, tau) {
+    const a = state.cells.find(c => c.id === aId);
+    if (!a || a.type !== 'A') return 0;
+    const n = (a.neighbors || []).find(x => x.targetId === bId);
+    if (!n) return 0;
+    return migrateFractionAtT(n.weight, tMin, tau);
+  }
+
+  function aDisplayAtStep(a, tMin) {
+    if (tMin <= 0) {
+      return {
+        energy: 110 + rnd(a.id, 'ae') * 30,
+        callDropRate: 0.6 + rnd(a.id, 'ac') * 0.8,
+        uplinkThroughput: 90 + rnd(a.id, 'au') * 25,
+        downlinkThroughput: 88 + rnd(a.id, 'ad') * 25,
+        rrcAttempts: 520 + rnd(a.id, 'ar2') * 200,
+        erabSetupSuccessRate: 98 + rnd(a.id, 'aa') * 1.5,
+        latencyMs: 28 + rnd(a.id, 'al') * 15,
+        handoverFailures: 3 + rnd(a.id, 'ah') * 6
+      };
+    }
+    return {
+      energy: rnd(a.id, 'off') * 2,
+      callDropRate: null,
+      uplinkThroughput: null,
+      downlinkThroughput: null,
+      rrcAttempts: null,
+      erabSetupSuccessRate: null,
+      latencyMs: null,
+      handoverFailures: null
+    };
+  }
+
+  function deltaBad(baseline, value, k) {
+    if (value == null || baseline == null) return 0;
+    if (HIGHER_WORSE[k]) return Math.max(0, value - baseline[k]);
+    return Math.max(0, baseline[k] - value);
+  }
+
+  function normalizeMinMax(values) {
+    const v = values.filter(x => Number.isFinite(x));
+    if (!v.length) return values.map(() => 0);
+    const lo = Math.min(...v);
+    const hi = Math.max(...v);
+    if (hi - lo < 1e-9) return values.map(() => 0);
+    return values.map(x => (Number.isFinite(x) ? (x - lo) / (hi - lo) : 0));
+  }
+
+  function stressScores(state, tMin, tau, weights) {
+    const bs = state.cells.filter(c => c.type === 'B');
+    const wSum = KPI_KEYS.reduce((s, k) => s + (weights[k] || 0), 0) || 1;
+    const normW = {};
+    KPI_KEYS.forEach(k => { normW[k] = (weights[k] || 0) / wSum; });
+
+    const perMetricNorm = {};
+    for (const k of KPI_KEYS) {
+      const raw = bs.map(b => {
+        const cur = bValueAtTime(b, state, tMin, tau);
+        return deltaBad(b.baseline, cur[k], k);
+      });
+      perMetricNorm[k] = normalizeMinMax(raw);
+    }
+
+    const stress = {};
+    bs.forEach((b, i) => {
+      let s = 0;
+      for (const k of KPI_KEYS) {
+        s += normW[k] * perMetricNorm[k][i];
+      }
+      stress[b.id] = s;
+    });
+    return stress;
+  }
+
+  function attributionShareOnB(state, aId, bId, tMin, tau) {
+    const num = migrateShareToB(state, aId, bId, tMin, tau);
+    if (num < 1e-12) return 0;
+    let den = 0;
+    for (const a of state.cells) {
+      if (a.type !== 'A' || !state.downAIds.includes(a.id)) continue;
+      den += migrateShareToB(state, a.id, bId, tMin, tau);
+    }
+    return den < 1e-12 ? 0 : num / den;
+  }
+
+  function priorityRanking(state, tMin, tau, weights) {
+    if (tMin <= 0) return [];
+    const stress = stressScores(state, tMin, tau, weights);
+    const down = state.downAIds.filter(id => state.cells.some(c => c.id === id && c.type === 'A'));
+    const bs = state.cells.filter(c => c.type === 'B');
+
+    return down.map(aid => {
+      let score = 0;
+      const contrib = [];
+      for (const b of bs) {
+        const att = attributionShareOnB(state, aid, b.id, tMin, tau);
+        const part = att * (stress[b.id] || 0);
+        score += part;
+        contrib.push({ bId: b.id, part });
+      }
+      contrib.sort((x, y) => y.part - x.part);
+      const top = contrib.filter(c => c.part > 1e-6).slice(0, 3);
+      const reason = top.length
+        ? top.map(t => `${t.bId} (${(t.part).toFixed(3)})`).join(', ')
+        : 'no B overlap';
+      return { aid, score, reason, contrib };
+    }).sort((x, y) => y.score - x.score);
+  }
+
+  function validateCell(c, i) {
+    if (!c || typeof c.id !== 'string') return 'Cell ' + i + ': missing id';
+    if (c.type !== 'A' && c.type !== 'B') return c.id + ': type must be A or B';
+    const hasGeo = typeof c.lat === 'number' && typeof c.lng === 'number';
+    const hasXY = typeof c.x === 'number' && typeof c.y === 'number';
+    if (!hasGeo && !hasXY) return c.id + ': need lat/lng or x/y';
+    if (!Array.isArray(c.neighbors)) return c.id + ': neighbors must be array';
+    for (const n of c.neighbors) {
+      if (!n.targetId || typeof n.weight !== 'number') return c.id + ': neighbor needs targetId, weight';
+    }
+    if (c.type === 'B' && c.baseline) {
+      for (const k of KPI_KEYS) {
+        if (typeof c.baseline[k] !== 'number') return c.id + ': baseline.' + k + ' missing';
+      }
+    }
+    if (c.type === 'B' && c.plateau) {
+      for (const k of KPI_KEYS) {
+        if (typeof c.plateau[k] !== 'number') return c.id + ': plateau.' + k + ' missing';
+      }
+    }
+    return null;
+  }
+
+  function normalizeANeighbors(a, validBIds) {
+    let ns = (a.neighbors || []).filter(n => validBIds.has(n.targetId));
+    if (!ns.length && validBIds.size) {
+      const eq = 1 / validBIds.size;
+      ns = Array.from(validBIds, id => ({ targetId: id, weight: eq }));
+    }
+    const sum = ns.reduce((s, n) => s + n.weight, 0);
+    if (sum <= 0) return ns;
+    return ns.map(n => ({ targetId: n.targetId, weight: n.weight / sum }));
+  }
+
+  function ingestJson(raw) {
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      return { error: 'Invalid JSON: ' + e.message };
+    }
+    const arr = Array.isArray(data) ? data : data.cells;
+    if (!Array.isArray(arr)) return { error: 'Expected array or { cells: [...] }' };
+    for (let i = 0; i < arr.length; i++) {
+      const err = validateCell(arr[i], i);
+      if (err) return { error: err };
+    }
+    const bIds = new Set(arr.filter(c => c.type === 'B').map(c => c.id));
+    const cells = arr.map(c => {
+      const hasGeo = typeof c.lat === 'number' && typeof c.lng === 'number';
+      return {
+        id: c.id,
+        name: c.name || c.id,
+        type: c.type,
+        lat: hasGeo ? c.lat : undefined,
+        lng: hasGeo ? c.lng : undefined,
+        locationLabel: c.locationLabel || '',
+        x: typeof c.x === 'number' ? c.x : 50,
+        y: typeof c.y === 'number' ? c.y : 50,
+        neighbors: c.type === 'A'
+          ? normalizeANeighbors(c, bIds)
+          : (c.neighbors || []).map(n => ({ targetId: n.targetId, weight: n.weight })),
+        baseline: c.type === 'B' ? (c.baseline ? Object.assign({}, c.baseline) : null) : undefined,
+        plateau: c.type === 'B' && c.plateau ? Object.assign({}, c.plateau) : undefined,
+        plateauUser: c.type === 'B' && c.plateau && typeof c.plateau === 'object'
+      };
+    });
+    const downAIds = Array.isArray(data.downAIds)
+      ? data.downAIds.filter(id => cells.some(c => c.id === id && c.type === 'A'))
+      : cells.filter(c => c.type === 'A').map(c => c.id);
+
+    for (const b of cells.filter(c => c.type === 'B')) {
+      if (!b.baseline) b.baseline = defaultBaselineB(b.id);
+      KPI_KEYS.forEach(k => {
+        if (typeof b.baseline[k] !== 'number') b.baseline[k] = defaultBaselineB(b.id)[k];
+      });
+      if (!b.plateau) {
+        b.plateau = null;
+        b.plateauUser = false;
+      }
+    }
+
+    const allGeo = cells.every(c => typeof c.lat === 'number' && typeof c.lng === 'number');
+    if (allGeo) {
+      buildNeighborsFromGeo(cells);
+    }
+    ensureXY(cells);
+
+    const state = { cells, downAIds };
+    computePlateausFromMigration(state);
+    return { state };
+  }
+
+  let state = null;
+  let lastGoodState = null;
+  let weights = {};
+  KPI_KEYS.forEach(k => { weights[k] = 1 / KPI_KEYS.length; });
+
+  let map = null;
+  let baseTileLayer = null;
+  let markerLayer = null;
+  let replayTimer = null;
+  let replayPlaying = false;
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function createBasemapTileLayer(which) {
+    const attr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    const common = { attribution: attr, subdomains: 'abcd', maxZoom: 20 };
+    if (which === 'carto') {
+      return L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', common);
+    }
+    return L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', common);
+  }
+
+  function updateMapAttribHtml(which) {
+    const el = document.getElementById('map-attrib');
+    if (!el) return;
+    const base =
+      '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · ' +
+      '© <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a> · ';
+    if (which === 'carto') {
+      el.innerHTML = base + 'Tiles: <strong>CARTO Positron</strong> from <code>basemaps.cartocdn.com</code> (not <code>tile.openstreetmap.org</code>).';
+    } else {
+      el.innerHTML = base + 'Tiles: <strong>CARTO Voyager</strong> from <code>basemaps.cartocdn.com</code> (not <code>tile.openstreetmap.org</code>).';
+    }
+  }
+
+  function setBasemap(which) {
+    if (!map) return;
+    if (baseTileLayer) {
+      map.removeLayer(baseTileLayer);
+      baseTileLayer = null;
+    }
+    baseTileLayer = createBasemapTileLayer(which);
+    baseTileLayer.addTo(map);
+    updateMapAttribHtml(which);
+  }
+
+  function getTau() {
+    return Number(document.getElementById('tau-slider').value) || 22;
+  }
+
+  function getTMin() {
+    return Number(document.getElementById('time-slider').value);
+  }
+
+  function formatTimeLabel(t) {
+    if (t <= 0) return 'Pre-outage';
+    return 'T+' + t + 'm';
+  }
+
+  function resetSynthetic() {
+    state = generateSyntheticCells();
+    computePlateausFromMigration(state);
+    lastGoodState = cloneState(state);
+  }
+
+  function cloneState(s) {
+    return JSON.parse(JSON.stringify(s));
+  }
+
+  function initMap() {
+    if (map) return;
+    const center = [44.448, -72.705];
+    map = L.map('map', { scrollWheelZoom: true }).setView(center, 11);
+    const which = (document.getElementById('map-basemap') && document.getElementById('map-basemap').value) || 'osm';
+    baseTileLayer = createBasemapTileLayer(which);
+    baseTileLayer.addTo(map);
+    updateMapAttribHtml(which);
+    markerLayer = L.layerGroup().addTo(map);
+  }
+
+  function cellLatLng(c) {
+    if (c.lat != null && c.lng != null) return [c.lat, c.lng];
+    return [44.45 + (c.y - 50) * 0.002, -72.70 + (c.x - 50) * 0.002];
+  }
+
+  function renderMap() {
+    initMap();
+    if (!state) return;
+    markerLayer.clearLayers();
+    const downSet = new Set(state.downAIds);
+    const tMin = getTMin();
+    const tau = getTau();
+    const stress = tMin > 0 ? stressScores(state, tMin, tau, weights) : {};
+
+    for (const c of state.cells) {
+      const [lat, lng] = cellLatLng(c);
+      const isA = c.type === 'A';
+      const down = isA && downSet.has(c.id);
+      let color = isA ? '#c62828' : '#2e7d32';
+      if (isA && !down) color = '#e57373';
+      if (!isA) {
+        const s = stress[c.id] || 0;
+        const t = Math.min(1, s * 1.5);
+        color = 'rgb(' + Math.round(46 + t * 120) + ',' + Math.round(125 - t * 40) + ',' + Math.round(50 - t * 20) + ')';
+      }
+      const icon = L.divIcon({
+        className: 'cell-marker-wrap',
+        html:
+          '<div class="cell-marker-stack">' +
+          '<div class="cell-marker-dot" style="background:' + color + ';"></div>' +
+          '<span class="cell-marker-id">' + escapeHtml(c.id) + '</span>' +
+          '</div>',
+        iconSize: [56, 44],
+        iconAnchor: [28, 11]
+      });
+      const m = L.marker([lat, lng], { icon });
+      const loadTxt = !isA && tMin > 0
+        ? '<br>Load arrived: <strong>' + (100 * kpiBlendRatio(state, c, tMin, tau)).toFixed(0) + '%</strong> of eq.'
+        : '';
+      m.bindPopup(
+        '<strong>' + c.name + '</strong><br>' +
+        (c.locationLabel || '') +
+        loadTxt +
+        (!isA && tMin > 0 ? '<br>Stress: ' + (stress[c.id] != null ? stress[c.id].toFixed(3) : '0') : '')
+      );
+      m.addTo(markerLayer);
+    }
+
+    if (state.cells.length) {
+      const bounds = L.latLngBounds(state.cells.map(cellLatLng));
+      map.fitBounds(bounds.pad(0.12));
+      map.zoomIn(1);
+    }
+  }
+
+  function migrationVectorForA(state, aId, tMin, tau, bs) {
+    const a = state.cells.find(c => c.id === aId);
+    return bs.map(b => {
+      const n = (a && a.neighbors || []).find(x => x.targetId === b.id);
+      const pi = n ? n.weight : 0;
+      return migrateFractionAtT(pi, tMin, tau);
+    });
+  }
+
+  function buildBTransitionMatrix(bs, sigmaKm) {
+    const n = bs.length;
+    const P = [];
+    for (let i = 0; i < n; i++) {
+      P[i] = [];
+      let s = 0;
+      const [latI, lngI] = cellLatLng(bs[i]);
+      for (let j = 0; j < n; j++) {
+        let w;
+        if (i === j) w = 0.72;
+        else {
+          const [latJ, lngJ] = cellLatLng(bs[j]);
+          const km = haversineKm(latI, lngI, latJ, lngJ);
+          w = Math.exp(-km / sigmaKm);
+        }
+        P[i][j] = w;
+        s += w;
+      }
+      for (let j = 0; j < n; j++) P[i][j] /= s;
+    }
+    return P;
+  }
+
+  function ipfLinkMatrix(R, C, P, iters) {
+    const n = R.length;
+    const G = [];
+    for (let i = 0; i < n; i++) {
+      G[i] = [];
+      let denom = 0;
+      for (let j = 0; j < n; j++) denom += P[i][j] * (C[j] + 1e-12);
+      denom = Math.max(denom, 1e-12);
+      for (let j = 0; j < n; j++) {
+        G[i][j] = R[i] * P[i][j] * C[j] / denom;
+      }
+    }
+    for (let it = 0; it < iters; it++) {
+      for (let i = 0; i < n; i++) {
+        let rs = 0;
+        for (let j = 0; j < n; j++) rs += G[i][j];
+        const f = rs > 1e-12 ? R[i] / rs : 0;
+        for (let j = 0; j < n; j++) G[i][j] *= f;
+      }
+      for (let j = 0; j < n; j++) {
+        let cs = 0;
+        for (let i = 0; i < n; i++) cs += G[i][j];
+        const f = cs > 1e-12 ? C[j] / cs : 0;
+        for (let i = 0; i < n; i++) G[i][j] *= f;
+      }
+    }
+    return G;
+  }
+
+  function bColor(idx, n) {
+    const h = 100 + (idx / Math.max(n - 1, 1)) * 75;
+    return 'hsl(' + h + ', 55%, 42%)';
+  }
+
+  /** Distinct color + dash for each B-cell line (KPI chart & legend); repeats after 16. */
+  const B_CELL_LINE_COLORS = [
+    '#b71c1c', '#1565c0', '#2e7d32', '#e65100', '#6a1b9a',
+    '#00695c', '#c2185b', '#4527a0', '#283593', '#ef6c00',
+    '#558b2f', '#00838f', '#4e342e', '#37474f', '#f57f17', '#5d4037'
+  ];
+  const B_CELL_LINE_DASH = [
+    'none',
+    '14 7',
+    '4 5',
+    '10 3 2 3',
+    '2 4',
+    '12 4 2 4',
+    '6 2 6 2',
+    '1 4',
+    '16 4',
+    '8 4 2 4 2 4',
+    '3 3',
+    '20 5 2 5',
+    '5 2 1 2',
+    '12 6 3 6',
+    '2 2',
+    '9 3 1 3'
+  ];
+
+  function bCellLineStyle(idx) {
+    const i = idx % B_CELL_LINE_COLORS.length;
+    return {
+      stroke: B_CELL_LINE_COLORS[i],
+      dash: B_CELL_LINE_DASH[i % B_CELL_LINE_DASH.length],
+      width: 2 + (idx % 3) * 0.35
+    };
+  }
+
+  function legendLineSampleSvg(st) {
+    const dash = st.dash === 'none' ? '' : ' stroke-dasharray="' + st.dash + '"';
+    return '<svg width="36" height="12" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px" aria-hidden="true">' +
+      '<line x1="2" y1="6" x2="34" y2="6" stroke="' + st.stroke + '" stroke-width="' + st.width + '"' + dash + '/></svg>';
+  }
+
+  function ribbonPathD(x0, y0a, y0b, x1, y1a, y1b) {
+    const cx = (x0 + x1) / 2;
+    return 'M' + x0 + ',' + y0a +
+      ' C' + cx + ',' + y0a + ' ' + cx + ',' + y1a + ' ' + x1 + ',' + y1a +
+      ' L' + x1 + ',' + y1b +
+      ' C' + cx + ',' + y1b + ' ' + cx + ',' + y0b + ' ' + x0 + ',' + y0b + ' Z';
+  }
+
+  function fillSankeyASelect() {
+    const sel = document.getElementById('sankey-a-select');
+    if (!sel || !state) return;
+    const prev = sel.value;
+    const down = state.downAIds.filter(id => state.cells.some(c => c.id === id && c.type === 'A'));
+    sel.innerHTML = down.length ? '' : '<option value="">(no down A-cells)</option>';
+    down.forEach(id => {
+      const c = state.cells.find(x => x.id === id);
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = c ? c.name : id;
+      sel.appendChild(opt);
+    });
+    if (prev && down.includes(prev)) sel.value = prev;
+    else if (down.length) sel.value = down[0];
+  }
+
+  function renderSankeySvg() {
+    const svg = document.getElementById('sankey-svg');
+    if (!svg || !state) return;
+    const tau = getTau();
+    const bs = state.cells.filter(c => c.type === 'B').sort((a, b) => a.id.localeCompare(b.id));
+    const aId = document.getElementById('sankey-a-select').value;
+    const delta = Number(document.getElementById('sankey-delta').value) || 15;
+    const numBCols = Number(document.getElementById('sankey-stages').value) || 4;
+    document.getElementById('sankey-stages-val').textContent = String(numBCols);
+    document.getElementById('sankey-kmax-label').textContent = String(numBCols * delta);
+
+    svg.innerHTML = '';
+    const H = 340;
+    const padT = 36;
+    const padB = 28;
+    const innerH = H - padT - padB;
+    const colGap = 880 / (numBCols + 1);
+    const x0 = 30;
+    const nodeW = 18;
+    const P = buildBTransitionMatrix(bs, 10);
+
+    if (!aId || !state.downAIds.includes(aId)) {
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', '40');
+      t.setAttribute('y', '120');
+      t.setAttribute('class', 'node-label');
+      t.textContent = 'Select a down A-cell, or restore an A-cell to refresh the list.';
+      svg.appendChild(t);
+      return;
+    }
+
+    const F = [null];
+    for (let k = 1; k <= numBCols; k++) {
+      F.push(migrationVectorForA(state, aId, k * delta, tau, bs));
+    }
+
+    let maxM = 1e-9;
+    for (let k = 1; k <= numBCols; k++) {
+      const s = F[k].reduce((a, b) => a + b, 0);
+      if (s > maxM) maxM = s;
+    }
+    maxM = Math.max(maxM, 1e-6);
+    const scaleB = innerH / maxM;
+    const scaleA = innerH;
+
+    const columns = [];
+    const colA = {
+      x: x0,
+      nodes: [{
+        id: 'A',
+        label: aId + ' (100% carried)',
+        y0: padT,
+        y1: padT + scaleA,
+        color: '#b71c1c'
+      }]
+    };
+    columns.push(colA);
+
+    for (let k = 1; k <= numBCols; k++) {
+      const vec = F[k];
+      const col = { x: x0 + k * colGap, nodes: [] };
+      let y = padT;
+      for (let i = 0; i < bs.length; i++) {
+        const v = vec[i];
+        const hRaw = v * scaleB;
+        const h = v < 1e-7 ? 0 : Math.max(hRaw, 3);
+        col.nodes.push({
+          id: bs[i].id,
+          label: bs[i].id,
+          v,
+          y0: y,
+          y1: y + h,
+          color: bColor(i, bs.length),
+          idx: i
+        });
+        if (h > 0) y += h + 2;
+      }
+      columns.push(col);
+    }
+
+    const links = [];
+    const col1 = columns[1];
+    const M1 = F[1].reduce((a, b) => a + b, 0);
+    let aY = padT;
+    col1.nodes.forEach(n => {
+      if (n.v < 1e-7) return;
+      const hL = M1 > 1e-9 ? scaleA * (n.v / M1) : 0;
+      const path = ribbonPathD(colA.x + nodeW, aY, aY + hL, col1.x, n.y0, n.y1);
+      links.push({ d: path, fill: n.color });
+      aY += hL;
+    });
+
+    for (let k = 1; k < numBCols; k++) {
+      const R = F[k];
+      const C = F[k + 1];
+      const sumR = R.reduce((a, b) => a + b, 0);
+      const sumC = C.reduce((a, b) => a + b, 0);
+      if (sumR < 1e-9 || sumC < 1e-9) continue;
+
+      const G = ipfLinkMatrix(R, C, P, 28);
+      const colL = columns[k];
+      const colR = columns[k + 1];
+      const leftById = {};
+      const rightById = {};
+      colL.nodes.forEach(n => {
+        if (n.v >= 1e-7) leftById[n.id] = n;
+      });
+      colR.nodes.forEach(n => {
+        if (n.v >= 1e-7) rightById[n.id] = n;
+      });
+
+      const leftY = {};
+      const rightY = {};
+      Object.keys(leftById).forEach(id => { leftY[id] = leftById[id].y0; });
+      Object.keys(rightById).forEach(id => { rightY[id] = rightById[id].y0; });
+
+      for (let i = 0; i < bs.length; i++) {
+        if (R[i] < 1e-9) continue;
+        const idL = bs[i].id;
+        const nL = leftById[idL];
+        if (!nL) continue;
+        for (let j = 0; j < bs.length; j++) {
+          const g = G[i][j];
+          if (g < 1e-8) continue;
+          const idR = bs[j].id;
+          const nR = rightById[idR];
+          if (!nR) continue;
+          const hL = (nL.y1 - nL.y0) * (g / R[i]);
+          const hR = (nR.y1 - nR.y0) * (g / C[j]);
+          const yLa = leftY[idL];
+          const yRa = rightY[idR];
+          const path = ribbonPathD(
+            colL.x + nodeW, yLa, yLa + Math.max(hL, 1.5),
+            colR.x, yRa, yRa + Math.max(hR, 1.5)
+          );
+          links.push({ d: path, fill: bColor(j, bs.length) });
+          leftY[idL] += hL;
+          rightY[idR] += hR;
+        }
+      }
+    }
+
+    const gLinks = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    links.forEach(L => {
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', L.d);
+      p.setAttribute('class', 'link-path');
+      p.setAttribute('fill', L.fill);
+      gLinks.appendChild(p);
+    });
+    svg.appendChild(gLinks);
+
+    columns.forEach((col, ck) => {
+      col.nodes.forEach(n => {
+        if (ck > 0 && n.v < 1e-7) return;
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', col.x);
+        rect.setAttribute('y', n.y0);
+        rect.setAttribute('width', nodeW);
+        rect.setAttribute('height', Math.max(n.y1 - n.y0, 3));
+        rect.setAttribute('rx', '2');
+        rect.setAttribute('fill', n.color);
+        rect.setAttribute('class', 'node-rect');
+        svg.appendChild(rect);
+        const tx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tx.setAttribute('x', col.x + nodeW + 4);
+        tx.setAttribute('y', (n.y0 + n.y1) / 2 + 4);
+        tx.setAttribute('class', 'node-label');
+        if (n.id === 'A') {
+          tx.textContent = n.label;
+        } else {
+          tx.textContent = n.label + ' ' + (100 * n.v).toFixed(1) + '%';
+        }
+        svg.appendChild(tx);
+      });
+      const ht = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      ht.setAttribute('x', col.x);
+      ht.setAttribute('y', '18');
+      ht.setAttribute('class', 'time-label');
+      ht.textContent = ck === 0 ? 't₀ = 0 (outage)' : ('t_' + ck + ' = ' + (ck * delta) + 'm');
+      svg.appendChild(ht);
+    });
+  }
+
+  function ensureKpiPlotSelect() {
+    const sel = document.getElementById('kpi-plot-metric');
+    if (!sel || sel.options.length) return;
+    KPI_KEYS.forEach(k => {
+      const o = document.createElement('option');
+      o.value = k;
+      o.textContent = KPI_LABELS[k];
+      if (k === 'energy') o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  function renderKpiTimeSeriesPlot() {
+    ensureKpiPlotSelect();
+    const svg = document.getElementById('kpi-ts-svg');
+    const legend = document.getElementById('kpi-ts-legend');
+    const headEl = document.getElementById('kpi-plot-heading-metric');
+    if (!svg || !state) {
+      if (svg) svg.innerHTML = '';
+      if (legend) legend.innerHTML = '';
+      return;
+    }
+    const sel = document.getElementById('kpi-plot-metric');
+    const kpi = (sel && sel.value) || 'energy';
+    if (headEl) headEl.textContent = KPI_LABELS[kpi] || kpi;
+
+    const tau = getTau();
+    const tCursor = Math.round(getTMin());
+    const bs = state.cells.filter(c => c.type === 'B').sort((a, b) => a.id.localeCompare(b.id));
+    const TMAX = 120;
+    const ml = 58;
+    const mr = 18;
+    const mt = 24;
+    const mb = 46;
+    const W = 900;
+    const H = 340;
+    const pw = W - ml - mr;
+    const ph = H - mt - mb;
+
+    const allVals = [];
+    const series = bs.map((b, bi) => {
+      const pts = [];
+      for (let t = 0; t <= TMAX; t++) {
+        const v = bValueAtTime(b, state, t, tau)[kpi];
+        pts.push(v);
+        allVals.push(v);
+      }
+      return { b, bi, pts };
+    });
+
+    let yMin = Math.min(...allVals);
+    let yMax = Math.max(...allVals);
+    if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) {
+      svg.innerHTML = '';
+      if (legend) legend.innerHTML = '';
+      return;
+    }
+    if (yMax - yMin < 1e-12) {
+      yMin -= 1;
+      yMax += 1;
+    }
+    const pady = (yMax - yMin) * 0.08;
+    yMin -= pady;
+    yMax += pady;
+
+    function xPix(t) {
+      return ml + (t / TMAX) * pw;
+    }
+    function yPix(v) {
+      return mt + ph - ((v - yMin) / (yMax - yMin)) * ph;
+    }
+
+    let g = '';
+    for (let i = 0; i <= 5; i++) {
+      const yy = mt + (ph * i) / 5;
+      g += '<line class="kpi-grid" x1="' + ml + '" y1="' + yy + '" x2="' + (ml + pw) + '" y2="' + yy + '"/>';
+    }
+    [0, 30, 60, 90, 120].forEach(t => {
+      const xx = xPix(t);
+      g += '<line class="kpi-grid" x1="' + xx + '" y1="' + mt + '" x2="' + xx + '" y2="' + (mt + ph) + '"/>';
+    });
+
+    let paths = '';
+    series.forEach(s => {
+      const st = bCellLineStyle(s.bi);
+      let d = '';
+      s.pts.forEach((v, t) => {
+        const x = xPix(t);
+        const y = yPix(v);
+        d += (t === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+      });
+      const dashAttr = st.dash === 'none' ? '' : ' stroke-dasharray="' + st.dash + '"';
+      paths += '<path class="kpi-line" d="' + d.trim() + '" stroke="' + st.stroke + '" stroke-width="' + st.width + '"' + dashAttr + '/>';
+    });
+
+    let cursor = '';
+    const tc = clamp(tCursor, 0, TMAX);
+    const xc = xPix(tc);
+    cursor += '<line class="kpi-cursor" x1="' + xc + '" y1="' + mt + '" x2="' + xc + '" y2="' + (mt + ph) + '"/>';
+    series.forEach(s => {
+      const v = s.pts[tc];
+      const st = bCellLineStyle(s.bi);
+      cursor += '<circle class="kpi-dot" cx="' + xc + '" cy="' + yPix(v) + '" r="5" fill="' + st.stroke + '" stroke="#fff" stroke-width="1.5"/>';
+    });
+
+    let yLabs = '';
+    for (let i = 0; i <= 4; i++) {
+      const fr = i / 4;
+      const val = yMin + fr * (yMax - yMin);
+      const yy = yPix(val);
+      const txt = val >= 100 ? val.toFixed(0) : val.toFixed(2);
+      yLabs += '<text class="kpi-axis" x="' + (ml - 8) + '" y="' + (yy + 4) + '" text-anchor="end">' + txt + '</text>';
+    }
+
+    let xLabs = '';
+    [0, 30, 60, 90, 120].forEach(t => {
+      const xx = xPix(t);
+      xLabs += '<text class="kpi-axis" x="' + xx + '" y="' + (H - 18) + '" text-anchor="middle">t=' + t + '</text>';
+    });
+
+    const xTitle = '<text class="kpi-axis" x="' + (ml + pw / 2) + '" y="' + (H - 4) + '" text-anchor="middle">Time after outage (min) — same axis as scenario slider</text>';
+
+    svg.innerHTML = g + paths + cursor + yLabs + xLabs + xTitle;
+
+    if (legend) {
+      legend.innerHTML = bs.map((b, bi) => {
+        const st = bCellLineStyle(bi);
+        return '<span>' + legendLineSampleSvg(st) + escapeHtml(b.id) + '</span>';
+      }).join('');
+    }
+  }
+
+  function applyWeightsPreset(equal) {
+    if (equal) {
+      KPI_KEYS.forEach(k => { weights[k] = 1 / KPI_KEYS.length; });
+    } else {
+      weights = {
+        energy: 0.06,
+        callDropRate: 0.22,
+        uplinkThroughput: 0.1,
+        downlinkThroughput: 0.1,
+        rrcAttempts: 0.18,
+        erabSetupSuccessRate: 0.18,
+        latencyMs: 0.1,
+        handoverFailures: 0.06
+      };
+      const s = KPI_KEYS.reduce((a, k) => a + weights[k], 0);
+      KPI_KEYS.forEach(k => { weights[k] /= s; });
+    }
+    syncWeightSliders();
+    render();
+  }
+
+  function syncWeightSliders() {
+    KPI_KEYS.forEach(k => {
+      const el = document.getElementById('w-' + k);
+      if (el) {
+        el.value = String(Math.round(weights[k] * 1000));
+        const lab = document.getElementById('wv-' + k);
+        if (lab) lab.textContent = (weights[k]).toFixed(3);
+      }
+    });
+  }
+
+  function buildWeightSliders() {
+    const host = document.getElementById('weight-sliders');
+    host.innerHTML = '';
+    KPI_KEYS.forEach(k => {
+      const row = document.createElement('label');
+      row.className = 'row';
+      row.innerHTML =
+        '<span class="label">' + KPI_LABELS[k] + '</span>' +
+        '<input type="range" id="w-' + k + '" min="0" max="1000" value="' + Math.round(weights[k] * 1000) + '" data-kpi="' + k + '" />' +
+        '<span class="weight-val" id="wv-' + k + '">' + weights[k].toFixed(3) + '</span>';
+      host.appendChild(row);
+    });
+    host.querySelectorAll('input[type=range]').forEach(el => {
+      el.addEventListener('input', () => {
+        const k = el.getAttribute('data-kpi');
+        weights[k] = Number(el.value) / 1000;
+        document.getElementById('wv-' + k).textContent = weights[k].toFixed(3);
+        render();
+      });
+    });
+  }
+
+  function fmt(v) {
+    if (v == null || Number.isNaN(v)) return '—';
+    if (typeof v === 'number') return v >= 100 ? v.toFixed(0) : v.toFixed(2);
+    return String(v);
+  }
+
+  function renderTable(tMin) {
+    const thead = document.querySelector('#cell-table thead');
+    const tbody = document.querySelector('#cell-table tbody');
+    const tau = getTau();
+    const cols = ['Cell', 'Type', ...KPI_KEYS.map(k => KPI_LABELS[k]), 'Stress'];
+    thead.innerHTML = '<tr>' + cols.map(c => '<th>' + c + '</th>').join('') + '</tr>';
+    tbody.innerHTML = '';
+
+    const stress = tMin > 0 ? stressScores(state, tMin, tau, weights) : {};
+
+    for (const c of state.cells.slice().sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'A' ? -1 : 1;
+      return a.id.localeCompare(b.id);
+    })) {
+      const tr = document.createElement('tr');
+      tr.className = c.type === 'A' ? 'type-a' : 'type-b';
+      let vals;
+      if (c.type === 'B') vals = bValueAtTime(c, state, tMin, tau);
+      else vals = aDisplayAtStep(c, tMin);
+
+      const cellsHtml = [c.name, c.type];
+      for (const k of KPI_KEYS) {
+        const v = vals[k];
+        let inner = fmt(v);
+        if (c.type === 'B' && tMin > 0 && v != null) {
+          const d = deltaBad(c.baseline, v, k);
+          if (d > 1e-6) {
+            inner += ' <span class="delta-pos">(+' + fmt(d) + ')</span>';
+          }
+        } else if (c.type === 'A' && tMin > 0 && v == null) {
+          inner = '<span class="na">n/a</span>';
+        }
+        cellsHtml.push(inner);
+      }
+      const sStr = c.type === 'B' && tMin > 0
+        ? (stress[c.id] != null ? stress[c.id].toFixed(3) : '0')
+        : '—';
+      cellsHtml.push(sStr);
+
+      tr.innerHTML = cellsHtml.map(h => '<td>' + h + '</td>').join('');
+      tbody.appendChild(tr);
+    }
+  }
+
+  function renderRank(tMin) {
+    const ol = document.getElementById('rank-list');
+    ol.innerHTML = '';
+    const tau = getTau();
+    if (tMin <= 0) {
+      const li = document.createElement('li');
+      li.textContent = 'Move time past pre-outage to compute restore priority.';
+      ol.appendChild(li);
+      return;
+    }
+    const rank = priorityRanking(state, tMin, tau, weights);
+    if (!rank.length) {
+      const li = document.createElement('li');
+      li.textContent = 'No A-cells down.';
+      ol.appendChild(li);
+      return;
+    }
+    rank.forEach((r, i) => {
+      const li = document.createElement('li');
+      li.innerHTML =
+        '<span class="rank-score">' + (i + 1) + '. ' + r.aid + '</span> — score ' + r.score.toFixed(4) +
+        '<br><small style="color:var(--muted)">Top B contributions: ' + r.reason + '</small>';
+      ol.appendChild(li);
+    });
+  }
+
+  function stopReplay() {
+    replayPlaying = false;
+    if (replayTimer) {
+      clearInterval(replayTimer);
+      replayTimer = null;
+    }
+    document.getElementById('btn-play').textContent = 'Play';
+  }
+
+  function startReplay() {
+    if (replayPlaying) return;
+    replayPlaying = true;
+    document.getElementById('btn-play').textContent = 'Playing…';
+    const speed = Number(document.getElementById('replay-speed').value) || 1;
+    const msPerMin = 600 / speed;
+    replayTimer = setInterval(() => {
+      const el = document.getElementById('time-slider');
+      let v = Number(el.value);
+      if (v >= 120) {
+        stopReplay();
+        return;
+      }
+      v += 1;
+      el.value = String(v);
+      render();
+    }, msPerMin);
+  }
+
+  function render() {
+    const tMin = getTMin();
+    const tau = getTau();
+    document.getElementById('time-slider-label').textContent = formatTimeLabel(tMin);
+    document.getElementById('tau-display').textContent = String(tau);
+    document.getElementById('tau-val').textContent = String(tau);
+    fillSankeyASelect();
+    renderTable(tMin);
+    renderRank(tMin);
+    renderMap();
+    renderSankeySvg();
+    renderKpiTimeSeriesPlot();
+    setTimeout(() => { if (map) map.invalidateSize(); }, 100);
+  }
+
+  function simulateRestore() {
+    const tMin = getTMin();
+    if (tMin <= 0) return;
+    const tau = getTau();
+    const rank = priorityRanking(state, tMin, tau, weights);
+    if (!rank.length) return;
+    const top = rank[0].aid;
+    state.downAIds = state.downAIds.filter(id => id !== top);
+    state.cells.filter(c => c.type === 'B').forEach(b => { b.plateauUser = false; });
+    computePlateausFromMigration(state);
+    lastGoodState = cloneState(state);
+    render();
+  }
+
+  document.getElementById('time-slider').addEventListener('input', () => {
+    stopReplay();
+    render();
+  });
+  document.getElementById('sankey-a-select').addEventListener('change', render);
+  document.getElementById('sankey-delta').addEventListener('change', render);
+  document.getElementById('sankey-stages').addEventListener('input', render);
+  document.getElementById('kpi-plot-metric').addEventListener('change', render);
+  document.getElementById('map-basemap').addEventListener('change', () => {
+    if (map) {
+      setBasemap(document.getElementById('map-basemap').value);
+      setTimeout(() => map.invalidateSize(), 50);
+    }
+  });
+  document.getElementById('tau-slider').addEventListener('input', render);
+  document.getElementById('preset-equal').addEventListener('click', () => applyWeightsPreset(true));
+  document.getElementById('preset-voice').addEventListener('click', () => applyWeightsPreset(false));
+  document.getElementById('btn-restore').addEventListener('click', simulateRestore);
+
+  document.getElementById('btn-play').addEventListener('click', () => {
+    if (replayPlaying) return;
+    if (getTMin() >= 120) document.getElementById('time-slider').value = '0';
+    startReplay();
+  });
+  document.getElementById('btn-pause').addEventListener('click', stopReplay);
+  document.getElementById('btn-reset-time').addEventListener('click', () => {
+    stopReplay();
+    document.getElementById('time-slider').value = '0';
+    render();
+  });
+
+  document.getElementById('data-source').addEventListener('change', e => {
+    const json = e.target.value === 'json';
+    document.getElementById('json-upload-wrap').style.display = json ? 'block' : 'none';
+    if (!json) {
+      resetSynthetic();
+      document.getElementById('json-file').value = '';
+      document.getElementById('json-error').style.display = 'none';
+      document.getElementById('json-status').style.display = 'none';
+      render();
+    }
+  });
+
+  document.getElementById('json-file').addEventListener('change', ev => {
+    const f = ev.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = ingestJson(reader.result);
+      const errEl = document.getElementById('json-error');
+      const okEl = document.getElementById('json-status');
+      if (res.error) {
+        errEl.textContent = res.error + ' — previous data kept.';
+        errEl.style.display = 'block';
+        okEl.style.display = 'none';
+      } else {
+        state = res.state;
+        lastGoodState = cloneState(state);
+        errEl.style.display = 'none';
+        okEl.textContent = 'Loaded ' + state.cells.length + ' cells. Down A-cells: ' + state.downAIds.join(', ');
+        okEl.style.display = 'block';
+        render();
+      }
+    };
+    reader.readAsText(f);
+  });
+
+  document.getElementById('btn-help').addEventListener('click', () => {
+    document.getElementById('modal-help').classList.add('open');
+  });
+  document.getElementById('help-close').addEventListener('click', () => {
+    document.getElementById('modal-help').classList.remove('open');
+  });
+  document.getElementById('modal-help').addEventListener('click', e => {
+    if (e.target.id === 'modal-help') document.getElementById('modal-help').classList.remove('open');
+  });
+
+  (function initTicks() {
+    const el = document.getElementById('time-ticks');
+    el.innerHTML = TICK_MARKS.map(t => '<span>' + (t === 0 ? '0' : 'T+' + t + 'm') + '</span>').join('');
+  })();
+
+  resetSynthetic();
+  buildWeightSliders();
+  render();
+})();
+  </script>
+</body>
+</html>
