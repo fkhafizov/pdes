@@ -130,7 +130,7 @@ code{font-family:'JetBrains Mono',monospace;font-size:.84em;background:#e6f2fb;p
       <label>Shape</label>
       <select id="ic-sel" onchange="resetSim()">
         <option value="sine">Sine Wave</option>
-        <option value="gaussian">Gaussian Bump</option>
+        <option value="gaussian" selected>Gaussian Bump</option>
         <option value="nwave">N-Wave</option>
         <option value="step_shock">Step → Shock (u_L &gt; u_R)</option>
         <option value="step_rare">Step → Rarefaction (u_L &lt; u_R)</option>
@@ -1008,10 +1008,14 @@ function drawShockAnalytics(){
 //  TAB: PDE COMPARISON
 // ═══════════════════════════════════════
 function drawComparison(){
+  // Exact transport solution: u(x,t) = u0(x - c*t), computed analytically
+  // Use maxAbsU0 as the representative wave speed so it visibly shifts
+  const uTransportExact = Array.from({length:P.N}, (_,j) => interpU0(j*dx - maxAbsU0*t));
+
   const sets=[
-    {id:'cv-cmp-tr', u:uTransport, color:'#2e7d32', label:'Transport'},
-    {id:'cv-cmp-bu', u:uNum,       color:'#c8370a', label:'Inv. Burgers'},
-    {id:'cv-cmp-vb', u:uVisc,      color:'#1255a0', label:'Viscous Burgers'},
+    {id:'cv-cmp-tr', u:uTransportExact, color:'#2e7d32', label:`Transport  c=${maxAbsU0.toFixed(2)}`},
+    {id:'cv-cmp-bu', u:uNum,            color:'#c8370a', label:'Inv. Burgers'},
+    {id:'cv-cmp-vb', u:uVisc,           color:'#1255a0', label:'Viscous Burgers'},
   ];
   sets.forEach(it=>{
     const cv=document.getElementById(it.id);
