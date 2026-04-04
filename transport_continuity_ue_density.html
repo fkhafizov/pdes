@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Transport · UE Density</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=Outfit:wght@400;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#dcfce7;font-family:'IBM Plex Mono',monospace;display:flex;height:100vh;overflow:hidden;color:#14532d}
+#sidebar{width:290px;background:rgba(255,255,255,0.80);backdrop-filter:blur(14px);border-right:2px solid #16a34a;padding:18px 16px;display:flex;flex-direction:column;gap:9px;overflow-y:auto}
+h1{font-family:'Outfit',sans-serif;font-size:15px;color:#15803d;letter-spacing:.03em;border-bottom:1px solid #86efac;padding-bottom:8px;line-height:1.3}
+h1 span{display:block;font-size:10px;color:#64748b;font-family:'IBM Plex Mono',monospace;font-weight:300;margin-top:2px}
+.eq{background:#f0fdf4;border-left:3px solid #16a34a;padding:8px 10px;font-size:10.5px;color:#166534;line-height:1.8;border-radius:0 4px 4px 0}
+.eq b{color:#15803d}
+.sec{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:#22c55e;margin-top:4px}
+.row{display:flex;align-items:center;gap:8px;margin-top:3px}
+.row label{font-size:10px;color:#475569;flex:1}
+.row input[type=range]{flex:1.2;accent-color:#16a34a;cursor:pointer}
+.row .val{font-size:10px;color:#16a34a;width:38px;text-align:right;font-weight:600}
+.chk-row{display:flex;align-items:center;gap:6px;font-size:10px;color:#475569;margin-top:4px}
+.stat{font-size:10px;color:#64748b;background:#f0fdf4;border:1px solid #bbf7d0;padding:6px 8px;border-radius:4px;line-height:1.6}
+.btns{display:flex;gap:6px;margin-top:auto;padding-top:6px}
+button{flex:1;padding:9px 4px;border:none;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .15s}
+#bStart{background:#16a34a;color:#fff}
+#bStart:hover{background:#15803d}
+#bReset{background:#64748b;color:#fff}
+#bReset:hover{background:#475569}
+#bHelp{background:#f0fdf4;color:#16a34a;border:1px solid #86efac}
+#bHelp:hover{background:#dcfce7}
+#main{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+canvas{display:block;border:2px solid #16a34a;box-shadow:0 8px 32px rgba(22,163,74,.18)}
+#modal{display:none;position:absolute;inset:16px;background:rgba(240,253,244,.97);border:2px solid #16a34a;border-radius:8px;padding:22px;overflow-y:auto;z-index:20;font-size:12px;line-height:1.75;color:#14532d}
+#modal h2{font-family:'Outfit',sans-serif;font-size:17px;color:#15803d;margin-bottom:12px}
+#modal p{margin-bottom:9px}
+#modal strong{color:#15803d}
+#closeM{position:absolute;top:10px;right:10px;background:#16a34a;color:#fff;border:none;border-radius:4px;padding:4px 14px;cursor:pointer;font-size:12px;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>Transport / Continuity<span>UE Density Field · LTE Load Dynamics</span></h1>
+  <div class="eq">
+    ∂ρ/∂t + ∇·(ρ<b>u</b>) = S(x,t)<br>
+    <b>u</b> = ω·(−y, x) + β·(x−½, y−½)
+  </div>
+  <div class="sec">Flow Field</div>
+  <div class="row"><label>ω (rotation rate)</label><input type="range" id="sOm" min="0" max="3" step="0.05" value="1.2"><span class="val" id="vOm">1.20</span></div>
+  <div class="row"><label>β (radial flow)</label><input type="range" id="sBe" min="-2" max="2" step="0.05" value="0"><span class="val" id="vBe">0.00</span></div>
+  <div class="sec">Source / Sink</div>
+  <div class="row"><label>Source rate S⁺</label><input type="range" id="sSP" min="0" max="3" step="0.05" value="0.5"><span class="val" id="vSP">0.50</span></div>
+  <div class="row"><label>Sink rate S⁻</label><input type="range" id="sSM" min="0" max="3" step="0.05" value="0.5"><span class="val" id="vSM">0.50</span></div>
+  <div class="row"><label>Source pos X</label><input type="range" id="sSX" min="0.1" max="0.9" step="0.05" value="0.3"><span class="val" id="vSX">0.30</span></div>
+  <div class="row"><label>Source pos Y</label><input type="range" id="sSY" min="0.1" max="0.9" step="0.05" value="0.3"><span class="val" id="vSY">0.30</span></div>
+  <div class="sec">Visualization</div>
+  <div class="chk-row"><input type="checkbox" id="chkVec" checked><label for="chkVec">Show velocity arrows</label></div>
+  <div class="row"><label>Steps / frame</label><input type="range" id="sSF" min="1" max="20" step="1" value="4"><span class="val" id="vSF">4</span></div>
+  <div class="stat" id="stat">t = 0.000 | ∫ρ = — | max = —</div>
+  <div class="btns">
+    <button id="bStart">▶ Start</button>
+    <button id="bReset">↺ Reset</button>
+    <button id="bHelp">? Help</button>
+  </div>
+</div>
+<div id="main">
+  <canvas id="cv"></canvas>
+  <div id="modal">
+    <button id="closeM">✕ Close</button>
+    <h2>Transport / Continuity: UE Density</h2>
+    <p><strong>Equation:</strong> ∂ρ/∂t + ∇·(ρu) = S(x,t) is the conservation law for UE density ρ(x,y,t). Total UEs are conserved modulo source/sink terms.</p>
+    <p><strong>Velocity field u:</strong> Combines rotation ω (circular traffic flow, e.g. ring-road commute) and radial component β (β>0 outward dispersion from CBD, β<0 inward rush-hour convergence).</p>
+    <p><strong>Source S⁺:</strong> UEs appearing (call session arrivals, entering coverage area). Placed at configurable hotspot.</p>
+    <p><strong>Sink S⁻:</strong> UEs disappearing (session termination, leaving coverage). Distributed evenly as a density-proportional drain.</p>
+    <p><strong>LTE relevance:</strong> eNB load balancing (MLB) algorithms compute a discretized version of this PDE to predict near-future cell loads. The divergence ∇·(ρu) at a cell boundary drives handoff preparation (HO Preparation events).</p>
+    <p><strong>Colormap:</strong> Black → Dark green → Yellow-green → White, representing increasing UE density.</p>
+    <p><strong>Arrows:</strong> Velocity field u(x,y) shown as arrows. Arrow length ∝ speed.</p>
+    <p><strong>Try:</strong> Set β = -1.5 (strong inward pull = rush hour convergence) and watch density compress. Then add source to simulate call arrivals.</p>
+  </div>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const N=120;
+let sz=Math.min(window.innerHeight-30,window.innerWidth-310);
+cv.width=cv.height=sz;
+
+let rho,running=false,animId,t_sim=0;
+
+function gp(id){return parseFloat(document.getElementById(id).value);}
+function gi(id){return parseInt(document.getElementById(id).value);}
+function params(){return{om:gp('sOm')*0.6,be:gp('sBe')*0.4,sp:gp('sSP'),sm:gp('sSM'),sx:gp('sSX'),sy:gp('sSY'),spf:gi('sSF'),vec:document.getElementById('chkVec').checked};}
+
+function uvel(x,y,om,be){
+  const cx=.5,cy=.5,dx=x-cx,dy=y-cy;
+  return[om*(-dy+cx-cx)+be*dx, om*(dx+cy-cy)+be*dy];
+}
+
+function init(){
+  rho=new Float32Array(N*N);
+  // Two blobs
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const x=i/N,y=j/N;
+    const v1=0.6*Math.exp(-((x-.35)**2+(y-.35)**2)/0.01);
+    const v2=0.4*Math.exp(-((x-.65)**2+(y-.65)**2)/0.008);
+    rho[j*N+i]=Math.max(0,v1+v2);
+  }
+  t_sim=0;
+}
+
+function step(){
+  const pr=params();
+  const dx=1/N;
+  // Estimate max speed for CFL
+  let umax=0;
+  for(let j=0;j<N;j+=10)for(let i=0;i<N;i+=10){
+    const[ux,uy]=uvel(i/N,j/N,pr.om,pr.be);
+    const m=Math.sqrt(ux*ux+uy*uy);
+    if(m>umax)umax=m;
+  }
+  const dt=Math.min(0.3*dx/Math.max(umax,1e-6),0.02);
+  const rn=new Float32Array(N*N);
+  for(let j=1;j<N-1;j++)for(let i=1;i<N-1;i++){
+    const x=i/N,y=j/N;
+    const[ux,uy]=uvel(x,y,pr.om,pr.be);
+    const c=rho[j*N+i];
+    // Upwind
+    const rxp=rho[j*N+i+1],rxm=rho[j*N+i-1];
+    const ryp=rho[(j+1)*N+i],rym=rho[(j-1)*N+i];
+    const flxR=ux>=0?ux*c:ux*rxp;
+    const flxL=ux>=0?ux*rxm:ux*c;
+    const flyU=uy>=0?uy*c:uy*ryp;
+    const flyD=uy>=0?uy*rym:uy*c;
+    const adv=((flxR-flxL)+(flyU-flyD))/dx;
+    // Source: Gaussian at sx,sy
+    const dsrc=Math.exp(-((x-pr.sx)**2+(y-pr.sy)**2)/0.005)*pr.sp*0.003;
+    // Sink: proportional to density
+    const dsink=pr.sm*0.015*c;
+    rn[j*N+i]=Math.max(0,c+dt*(-adv+dsrc-dsink));
+  }
+  // Periodic BCs
+  for(let i=0;i<N;i++){
+    rn[i*N]=rn[i*N+N-2]; rn[i*N+N-1]=rn[i*N+1];
+    rn[i]=rn[(N-2)*N+i]; rn[(N-1)*N+i]=rn[N+i];
+  }
+  for(let k=0;k<N*N;k++)rho[k]=rn[k];
+  t_sim+=dt;
+}
+
+function thermalColor(t){
+  t=Math.max(0,Math.min(1,t));
+  // black->dark-green->light-green->yellow-white
+  if(t<.33){const s=t/.33;return[Math.round(s*30),Math.round(s*120),Math.round(s*30)];}
+  if(t<.66){const s=(t-.33)/.33;return[Math.round(30+s*160),Math.round(120+s*100),Math.round(30*s)];}
+  {const s=(t-.66)/.34;return[Math.round(190+s*65),Math.round(220+s*35),Math.round(s*255)];}
+}
+
+function render(){
+  const pr=params();
+  let vmax=0;
+  for(let k=0;k<N*N;k++)if(rho[k]>vmax)vmax=rho[k];
+  const S=sz/N;
+  const img=ctx.createImageData(sz,sz);
+  const d=img.data;
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const t=rho[j*N+i]/(vmax+1e-15);
+    const[r,g,b]=thermalColor(t);
+    const px=Math.floor(i*S),py=Math.floor(j*S);
+    const pw=Math.ceil(S),ph=Math.ceil(S);
+    for(let dy=0;dy<ph;dy++)for(let dx=0;dx<pw;dx++){
+      const idx=((py+dy)*sz+(px+dx))*4;
+      if(idx+3<d.length){d[idx]=r;d[idx+1]=g;d[idx+2]=b;d[idx+3]=255;}
+    }
+  }
+  ctx.putImageData(img,0,0);
+
+  // Velocity arrows
+  if(pr.vec){
+    const STEP=14;
+    ctx.strokeStyle='rgba(255,255,255,0.65)';
+    ctx.fillStyle='rgba(255,255,255,0.65)';
+    for(let j=STEP/2;j<N;j+=STEP)for(let i=STEP/2;i<N;i+=STEP){
+      const x=i/N,y=j/N;
+      const[ux,uy]=uvel(x,y,pr.om,pr.be);
+      const px=i*S+S/2,py=j*S+S/2;
+      const sc=Math.min(S*STEP*.35/Math.max(Math.sqrt(ux*ux+uy*uy),1e-6),S*STEP*.35);
+      const ex=px+ux*sc,ey=py+uy*sc;
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(ex,ey);ctx.stroke();
+      // arrowhead
+      const ang=Math.atan2(ey-py,ex-px);
+      ctx.beginPath();
+      ctx.moveTo(ex,ey);
+      ctx.lineTo(ex-5*Math.cos(ang-.4),ey-5*Math.sin(ang-.4));
+      ctx.lineTo(ex-5*Math.cos(ang+.4),ey-5*Math.sin(ang+.4));
+      ctx.closePath();ctx.fill();
+    }
+  }
+
+  // Source marker
+  ctx.beginPath();ctx.arc(pr.sx*sz,pr.sy*sz,7,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,200,0,0.3)';ctx.fill();
+  ctx.strokeStyle='#facc15';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#facc15';ctx.font='bold 10px IBM Plex Mono,monospace';
+  ctx.fillText('S⁺',pr.sx*sz+9,pr.sy*sz+4);
+
+  ctx.fillStyle='rgba(255,255,255,0.85)';ctx.fillRect(4,4,220,18);
+  ctx.fillStyle='#14532d';ctx.font='11px IBM Plex Mono,monospace';
+  ctx.fillText(`Continuity  t=${t_sim.toFixed(3)}`,8,16);
+
+  let mass=0,mx=0;
+  for(let k=0;k<N*N;k++){mass+=rho[k];if(rho[k]>mx)mx=rho[k];}
+  document.getElementById('stat').textContent=`t = ${t_sim.toFixed(3)} | ∫ρ = ${(mass/(N*N)*1e4).toFixed(1)}×10⁻⁴ | max = ${mx.toFixed(4)}`;
+}
+
+function loop(){
+  const pr=params();
+  for(let s=0;s<pr.spf;s++)step();
+  render();
+  if(running)animId=requestAnimationFrame(loop);
+}
+
+['sOm','sBe','sSP','sSM','sSX','sSY','sSF'].forEach(id=>{
+  const el=document.getElementById(id),vid='v'+id.slice(1);
+  el.oninput=()=>document.getElementById(vid).textContent=parseFloat(el.value).toFixed(2);
+});
+
+document.getElementById('bStart').onclick=()=>{
+  running=!running;
+  document.getElementById('bStart').textContent=running?'⏸ Pause':'▶ Start';
+  if(running)loop();
+};
+document.getElementById('bReset').onclick=()=>{
+  running=false;document.getElementById('bStart').textContent='▶ Start';
+  cancelAnimationFrame(animId);init();render();
+};
+document.getElementById('bHelp').onclick=()=>document.getElementById('modal').style.display='block';
+document.getElementById('closeM').onclick=()=>document.getElementById('modal').style.display='none';
+
+init();render();
+</script>
+</body>
+</html>

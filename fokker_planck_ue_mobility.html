@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fokker-Planck · UE Mobility</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Syne:wght@400;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#dbeafe;font-family:'JetBrains Mono',monospace;display:flex;height:100vh;overflow:hidden;color:#1e3a5f}
+#sidebar{width:290px;background:rgba(255,255,255,0.82);backdrop-filter:blur(16px);border-right:2px solid #2563eb;padding:18px 16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+h1{font-family:'Syne',sans-serif;font-size:15px;color:#1d4ed8;letter-spacing:.04em;border-bottom:1px solid #93c5fd;padding-bottom:8px;line-height:1.3}
+h1 span{display:block;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;font-weight:300;margin-top:2px;letter-spacing:.08em}
+.eq{background:#eff6ff;border-left:3px solid #2563eb;padding:8px 10px;font-size:10.5px;color:#1e40af;line-height:1.8;border-radius:0 4px 4px 0}
+.eq b{color:#1d4ed8}
+.sec{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:#3b82f6;margin-top:4px}
+.row{display:flex;align-items:center;gap:8px;margin-top:3px}
+.row label{font-size:10px;color:#475569;flex:1;min-width:0}
+.row input[type=range]{flex:1.2;accent-color:#2563eb;cursor:pointer}
+.row .val{font-size:10px;color:#2563eb;width:36px;text-align:right;font-weight:600}
+.stat{font-size:10px;color:#64748b;background:#f0f9ff;border:1px solid #bae6fd;padding:6px 8px;border-radius:4px;line-height:1.6}
+.btns{display:flex;gap:6px;margin-top:auto;padding-top:6px}
+button{flex:1;padding:9px 4px;border:none;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .15s}
+#bStart{background:#2563eb;color:#fff}
+#bStart:hover{background:#1d4ed8}
+#bReset{background:#64748b;color:#fff}
+#bReset:hover{background:#475569}
+#bHelp{background:#eff6ff;color:#2563eb;border:1px solid #93c5fd}
+#bHelp:hover{background:#dbeafe}
+#main{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+canvas{display:block;border:2px solid #2563eb;box-shadow:0 8px 32px rgba(37,99,235,.18)}
+#cbar{position:absolute;right:18px;top:50%;transform:translateY(-50%);width:16px;height:200px;border:1px solid #93c5fd;border-radius:3px}
+#cbarLow,#cbarHigh{position:absolute;right:22px;font-size:9px;color:#1e3a5f;font-weight:600}
+#cbarHigh{top:-14px}
+#cbarLow{bottom:-14px}
+#modal{display:none;position:absolute;inset:16px;background:rgba(239,246,255,.97);border:2px solid #2563eb;border-radius:8px;padding:22px;overflow-y:auto;z-index:20;font-size:12px;line-height:1.75;color:#1e3a5f}
+#modal h2{font-family:'Syne',sans-serif;font-size:17px;color:#1d4ed8;margin-bottom:12px}
+#modal p{margin-bottom:9px}
+#modal strong{color:#1d4ed8}
+#closeM{position:absolute;top:10px;right:10px;background:#2563eb;color:#fff;border:none;border-radius:4px;padding:4px 14px;cursor:pointer;font-size:12px;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>Fokker-Planck<span>UE Probability Density · LTE Mobility</span></h1>
+  <div class="eq">
+    ∂p/∂t = −∇·(<b>F</b>·p) + D·∇²p<br>
+    <b>F</b>(x) = Σ α·(x<sub>k</sub>−x)/|x<sub>k</sub>−x|²
+  </div>
+  <div class="sec">Diffusion</div>
+  <div class="row"><label>D (diffusivity)</label><input type="range" id="sD" min="0.1" max="3" step="0.1" value="0.9"><span class="val" id="vD">0.9</span></div>
+  <div class="sec">Drift</div>
+  <div class="row"><label>α (hotspot pull)</label><input type="range" id="sA" min="0" max="6" step="0.1" value="2"><span class="val" id="vA">2.0</span></div>
+  <div class="row"><label>Hotspots (eNBs)</label><input type="range" id="sH" min="1" max="5" step="1" value="3"><span class="val" id="vH">3</span></div>
+  <div class="sec">Initial Condition</div>
+  <div class="row"><label>σ₀ (initial spread)</label><input type="range" id="sS" min="0.02" max="0.25" step="0.01" value="0.09"><span class="val" id="vS">0.09</span></div>
+  <div class="row"><label>Cx (init center X)</label><input type="range" id="sCx" min="0.1" max="0.9" step="0.05" value="0.5"><span class="val" id="vCx">0.5</span></div>
+  <div class="row"><label>Cy (init center Y)</label><input type="range" id="sCy" min="0.1" max="0.9" step="0.05" value="0.5"><span class="val" id="vCy">0.5</span></div>
+  <div class="sec">Simulation</div>
+  <div class="row"><label>Steps / frame</label><input type="range" id="sSF" min="1" max="25" step="1" value="6"><span class="val" id="vSF">6</span></div>
+  <div class="stat" id="stat">t = 0.000 | mass = 1.000 | peak = 0.00</div>
+  <div class="btns">
+    <button id="bStart">▶ Start</button>
+    <button id="bReset">↺ Reset</button>
+    <button id="bHelp">? Help</button>
+  </div>
+</div>
+<div id="main">
+  <canvas id="cv"></canvas>
+  <canvas id="cbar" width="16" height="200"></canvas>
+  <span id="cbarHigh">max</span>
+  <span id="cbarLow">0</span>
+  <div id="modal">
+    <button id="closeM">✕ Close</button>
+    <h2>Fokker-Planck: UE Mobility Model</h2>
+    <p><strong>Equation:</strong> ∂p/∂t = −∇·(F·p) + D·∇²p tracks the probability density p(x,y,t) of a UE being at location (x,y) at time t.</p>
+    <p><strong>Drift term −∇·(F·p):</strong> UEs are attracted toward hotspot locations (eNBs / POIs). The force F(x) pulls density toward the nearest attractor, modeling commute patterns and coverage-seeking behaviour.</p>
+    <p><strong>Diffusion term D·∇²p:</strong> Random walk component representing pedestrian wandering or vehicle detours. Higher D → faster spreading, broader steady-state distribution.</p>
+    <p><strong>Hotspots:</strong> Orange rings mark eNB / attractor positions. Density concentrates around them at steady-state — mapping directly to long-term cell load.</p>
+    <p><strong>LTE relevance:</strong> The steady-state p(x,y) determines long-term user distribution per cell sector. This directly drives Mobility Load Balancing (MLB) and antenna tilt optimization decisions.</p>
+    <p><strong>Colormap:</strong> Blue = low UE probability, White = medium, Red = high concentration.</p>
+    <p><strong>Controls:</strong> Adjust D and α and watch the competition between spreading and focusing. Try α=0 for pure diffusion (heat equation). Try D=0.1 and α=5 for sharp hotspot focusing.</p>
+  </div>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const N=120;
+let sz=Math.min(window.innerHeight-30,window.innerWidth-310);
+cv.width=cv.height=sz;
+
+// Color bar
+const cbc=document.getElementById('cbar'),cbx=cbc.getContext('2d');
+function drawColorbar(){
+  const h=200;
+  for(let y=0;y<h;y++){
+    const t=1-y/h;
+    const [r,g,b]=bwr(t);
+    cbx.fillStyle=`rgb(${r},${g},${b})`;
+    cbx.fillRect(0,y,16,1);
+  }
+}
+drawColorbar();
+
+let p,running=false,animId,t_sim=0;
+let hotspots=[];
+
+function params(){
+  return{
+    D:parseFloat(document.getElementById('sD').value)*0.0015,
+    alpha:parseFloat(document.getElementById('sA').value)*0.04,
+    nH:parseInt(document.getElementById('sH').value),
+    sigma:parseFloat(document.getElementById('sS').value),
+    cx:parseFloat(document.getElementById('sCx').value),
+    cy:parseFloat(document.getElementById('sCy').value),
+    spf:parseInt(document.getElementById('sSF').value)
+  };
+}
+
+function makeHotspots(n){
+  hotspots=[];
+  if(n===1){hotspots.push({x:.5,y:.5});return;}
+  for(let k=0;k<n;k++){
+    const a=2*Math.PI*k/n+Math.PI/6;
+    hotspots.push({x:.5+.28*Math.cos(a),y:.5+.28*Math.sin(a)});
+  }
+}
+
+function init(){
+  const pr=params();
+  makeHotspots(pr.nH);
+  p=new Float32Array(N*N);
+  const s2=2*pr.sigma*pr.sigma;
+  let tot=0;
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const x=i/N,y=j/N;
+    const v=Math.exp(-((x-pr.cx)**2+(y-pr.cy)**2)/s2);
+    p[j*N+i]=v; tot+=v;
+  }
+  for(let k=0;k<N*N;k++)p[k]/=tot;
+  t_sim=0;
+}
+
+function drift(x,y,alpha){
+  let fx=0,fy=0;
+  for(const h of hotspots){
+    const dx=h.x-x,dy=h.y-y;
+    const r2=dx*dx+dy*dy+5e-4;
+    fx+=alpha*dx/r2; fy+=alpha*dy/r2;
+  }
+  const mag=Math.sqrt(fx*fx+fy*fy);
+  const cap=0.12;
+  if(mag>cap){fx*=cap/mag;fy*=cap/mag;}
+  return[fx,fy];
+}
+
+function step(){
+  const pr=params();
+  const dx=1/N,D=pr.D,a=pr.alpha;
+  const dt=0.3*Math.min(dx*dx/(4*Math.max(D,1e-7)),dx/0.14);
+  const pn=new Float32Array(N*N);
+  for(let j=1;j<N-1;j++)for(let i=1;i<N-1;i++){
+    const x=i/N,y=j/N;
+    const[fx,fy]=drift(x,y,a);
+    const c=p[j*N+i];
+    const pr=p[j*N+i+1],pl=p[j*N+i-1];
+    const pu=p[(j+1)*N+i],pd=p[(j-1)*N+i];
+    // Conservative flux upwind
+    const flxR=fx>=0?fx*c:fx*pr;
+    const flxL=fx>=0?fx*pl:fx*c;
+    const flyU=fy>=0?fy*c:fy*pu;
+    const flyD=fy>=0?fy*pd:fy*c;
+    const adv=((flxR-flxL)+(flyU-flyD))/dx;
+    const diff=D*(pr+pl+pu+pd-4*c)/(dx*dx);
+    pn[j*N+i]=Math.max(0,c+dt*(diff-adv));
+  }
+  for(let i=0;i<N;i++){
+    pn[i]=pn[N+i]; pn[(N-1)*N+i]=pn[(N-2)*N+i];
+    pn[i*N]=pn[i*N+1]; pn[i*N+N-1]=pn[i*N+N-2];
+  }
+  for(let k=0;k<N*N;k++)p[k]=pn[k];
+  t_sim+=dt;
+}
+
+function bwr(t){
+  // blue-white-red
+  t=Math.max(0,Math.min(1,t));
+  if(t<.5){const s=t*2;return[Math.round(s*255),Math.round(s*255),255];}
+  else{const s=(t-.5)*2;return[255,Math.round((1-s)*255),Math.round((1-s)*255)];}
+}
+
+function render(){
+  let vmax=0;
+  for(let k=0;k<N*N;k++)if(p[k]>vmax)vmax=p[k];
+  const S=sz/N;
+  const img=ctx.createImageData(sz,sz);
+  const d=img.data;
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const t=p[j*N+i]/(vmax+1e-15);
+    const[r,g,b]=bwr(t);
+    const px=Math.floor(i*S),py=Math.floor(j*S);
+    const pw=Math.ceil(S),ph=Math.ceil(S);
+    for(let dy2=0;dy2<ph;dy2++)for(let dx2=0;dx2<pw;dx2++){
+      const idx=((py+dy2)*sz+(px+dx2))*4;
+      if(idx>=0&&idx+3<d.length){d[idx]=r;d[idx+1]=g;d[idx+2]=b;d[idx+3]=255;}
+    }
+  }
+  ctx.putImageData(img,0,0);
+  // Draw hotspots
+  for(const h of hotspots){
+    const hx=h.x*sz,hy=h.y*sz;
+    ctx.beginPath();ctx.arc(hx,hy,10,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,102,0,0.2)';ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+    ctx.beginPath();ctx.arc(hx,hy,10,0,Math.PI*2);
+    ctx.strokeStyle='#ff6600';ctx.lineWidth=1.5;ctx.stroke();
+    // tower icon
+    ctx.fillStyle='#ff6600';ctx.font='10px sans-serif';
+    ctx.fillText('⬡',hx-5,hy+4);
+  }
+  // Label
+  ctx.fillStyle='rgba(255,255,255,0.85)';ctx.fillRect(4,4,200,18);
+  ctx.fillStyle='#1e3a5f';ctx.font='11px JetBrains Mono,monospace';
+  ctx.fillText(`Fokker-Planck  t=${t_sim.toFixed(3)}`,8,16);
+  // Stats
+  let mass=0,peak=0;
+  for(let k=0;k<N*N;k++){mass+=p[k];if(p[k]>peak)peak=p[k];}
+  document.getElementById('stat').textContent=`t = ${t_sim.toFixed(3)} | mass = ${(mass/N/N*N*N).toFixed(4)} | peak = ${(peak*N*N).toFixed(2)}`;
+}
+
+function loop(){
+  const pr=params();
+  for(let s=0;s<pr.spf;s++)step();
+  render();
+  if(running)animId=requestAnimationFrame(loop);
+}
+
+// Param labels
+['sD','sA','sH','sS','sCx','sCy','sSF'].forEach(id=>{
+  const el=document.getElementById(id),vid='v'+id.slice(1);
+  el.oninput=()=>document.getElementById(vid).textContent=parseFloat(el.value).toFixed(2);
+});
+
+document.getElementById('bStart').onclick=()=>{
+  running=!running;
+  document.getElementById('bStart').textContent=running?'⏸ Pause':'▶ Start';
+  if(running)loop();
+};
+document.getElementById('bReset').onclick=()=>{
+  running=false;document.getElementById('bStart').textContent='▶ Start';
+  cancelAnimationFrame(animId);init();render();
+};
+document.getElementById('bHelp').onclick=()=>document.getElementById('modal').style.display='block';
+document.getElementById('closeM').onclick=()=>document.getElementById('modal').style.display='none';
+
+init();render();
+</script>
+</body>
+</html>

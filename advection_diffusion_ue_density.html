@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Advection-Diffusion · UE Density</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Raleway:wght@400;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fef9c3;font-family:'Space Mono',monospace;display:flex;height:100vh;overflow:hidden;color:#713f12}
+#sidebar{width:290px;background:rgba(255,255,255,0.78);backdrop-filter:blur(14px);border-right:2px solid #ca8a04;padding:18px 16px;display:flex;flex-direction:column;gap:9px;overflow-y:auto}
+h1{font-family:'Raleway',sans-serif;font-size:15px;color:#a16207;letter-spacing:.03em;border-bottom:1px solid #fde68a;padding-bottom:8px;line-height:1.3}
+h1 span{display:block;font-size:10px;color:#92400e;font-family:'Space Mono',monospace;font-weight:400;margin-top:2px}
+.eq{background:#fefce8;border-left:3px solid #ca8a04;padding:8px 10px;font-size:10.5px;color:#92400e;line-height:1.8;border-radius:0 4px 4px 0}
+.eq b{color:#a16207}
+.pe-badge{background:#a16207;color:#fff;font-size:12px;font-weight:700;padding:6px 10px;border-radius:5px;text-align:center;letter-spacing:.04em}
+.sec{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#ca8a04;margin-top:4px}
+.row{display:flex;align-items:center;gap:8px;margin-top:3px}
+.row label{font-size:10px;color:#57534e;flex:1}
+.row input[type=range]{flex:1.2;accent-color:#ca8a04;cursor:pointer}
+.row .val{font-size:10px;color:#a16207;width:38px;text-align:right;font-weight:700}
+.stat{font-size:10px;color:#78716c;background:#fefce8;border:1px solid #fde68a;padding:6px 8px;border-radius:4px;line-height:1.6}
+.btns{display:flex;gap:6px;margin-top:auto;padding-top:6px}
+button{flex:1;padding:9px 4px;border:none;border-radius:5px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;transition:all .15s}
+#bStart{background:#ca8a04;color:#fff}
+#bStart:hover{background:#a16207}
+#bReset{background:#78716c;color:#fff}
+#bReset:hover{background:#57534e}
+#bHelp{background:#fefce8;color:#a16207;border:1px solid #fde68a}
+#bHelp:hover{background:#fef9c3}
+#main{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+canvas{display:block;border:2px solid #ca8a04;box-shadow:0 8px 32px rgba(202,138,4,.22)}
+#modal{display:none;position:absolute;inset:16px;background:rgba(254,252,232,.97);border:2px solid #ca8a04;border-radius:8px;padding:22px;overflow-y:auto;z-index:20;font-size:12px;line-height:1.75;color:#713f12}
+#modal h2{font-family:'Raleway',sans-serif;font-size:17px;color:#a16207;margin-bottom:12px}
+#modal p{margin-bottom:9px}
+#modal strong{color:#a16207}
+#closeM{position:absolute;top:10px;right:10px;background:#ca8a04;color:#fff;border:none;border-radius:4px;padding:4px 14px;cursor:pointer;font-size:12px;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>Advection-Diffusion<span>Mixed Mobility · UE Density Plume</span></h1>
+  <div class="eq">
+    ∂ρ/∂t + <b>u</b>·∇ρ = D·∇²ρ<br>
+    Pe = |<b>u</b>|·L / D  (Péclet number)
+  </div>
+  <div class="pe-badge" id="peBadge">Pe = 0.0  ·  diffusion dominated</div>
+  <div class="sec">Wind (Advection)</div>
+  <div class="row"><label>Speed |u| (m/s equiv)</label><input type="range" id="sU" min="0" max="2" step="0.05" value="0.5"><span class="val" id="vU">0.50</span></div>
+  <div class="row"><label>Direction θ (deg)</label><input type="range" id="sTh" min="0" max="360" step="5" value="45"><span class="val" id="vTh">45</span></div>
+  <div class="sec">Diffusion</div>
+  <div class="row"><label>D (diffusivity)</label><input type="range" id="sD" min="0.01" max="2" step="0.01" value="0.3"><span class="val" id="vD">0.30</span></div>
+  <div class="sec">Multiple Sources</div>
+  <div class="row"><label>Sources (1–4)</label><input type="range" id="sNS" min="1" max="4" step="1" value="1"><span class="val" id="vNS">1</span></div>
+  <div class="row"><label>Emission rate</label><input type="range" id="sEm" min="0.1" max="3" step="0.1" value="1.0"><span class="val" id="vEm">1.00</span></div>
+  <div class="sec">Simulation</div>
+  <div class="row"><label>Steps / frame</label><input type="range" id="sSF" min="1" max="20" step="1" value="5"><span class="val" id="vSF">5</span></div>
+  <div class="stat" id="stat">t = 0.000 | Pe = — | max ρ = —</div>
+  <div class="btns">
+    <button id="bStart">▶ Start</button>
+    <button id="bReset">↺ Reset</button>
+    <button id="bHelp">? Help</button>
+  </div>
+</div>
+<div id="main">
+  <canvas id="cv"></canvas>
+  <div id="modal">
+    <button id="closeM">✕ Close</button>
+    <h2>Advection-Diffusion: Mixed UE Mobility</h2>
+    <p><strong>Equation:</strong> ∂ρ/∂t + u·∇ρ = D·∇²ρ combines directed transport (advection) with random spreading (diffusion).</p>
+    <p><strong>Péclet Number Pe = |u|·L/D:</strong> The dimensionless ratio governing regime:
+    <br>• Pe ≪ 1 → Diffusion dominated: smooth Gaussian spreading (pedestrian zones)
+    <br>• Pe ≈ 1 → Mixed regime: asymmetric plume (suburban mixed traffic)
+    <br>• Pe ≫ 1 → Advection dominated: sharp front propagation (highway corridor)</p>
+    <p><strong>LTE relevance:</strong> At high Pe (highway scenario), UE density creates a sharp wavefront approaching a cell boundary — the cell experiences a sudden load spike (shock-like, analogous to Burgers equation). Standard MLB needs predictive look-ahead here. At low Pe (dense urban), the diffuse distribution allows reactive MLB to suffice.</p>
+    <p><strong>Sources:</strong> Represent UE arrival hotspots (e.g., train station exits). Multiple sources create interfering plumes.</p>
+    <p><strong>Colormap:</strong> Purple (low) → Orange → Yellow → White (high density).</p>
+    <p><strong>Try:</strong> D=0.05, |u|=1.5 → Pe≫1, watch the sharp propagating front. Then D=1.5, |u|=0.2 → Pe≪1, Gaussian spreading in all directions.</p>
+  </div>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const N=120;
+let sz=Math.min(window.innerHeight-30,window.innerWidth-310);
+cv.width=cv.height=sz;
+
+let rho,running=false,animId,t_sim=0;
+let sources=[];
+
+function gp(id){return parseFloat(document.getElementById(id).value);}
+function gi(id){return parseInt(document.getElementById(id).value);}
+function params(){
+  const u=gp('sU')*0.4, th=gp('sTh')*Math.PI/180;
+  const D=gp('sD')*0.0015;
+  return{ux:u*Math.cos(th),uy:u*Math.sin(th),D,nS:gi('sNS'),em:gp('sEm'),spf:gi('sSF'),u,D_raw:gp('sD')};
+}
+
+function makeSources(n){
+  sources=[];
+  if(n===1){sources.push({x:.25,y:.5});return;}
+  if(n===2){sources.push({x:.2,y:.35},{x:.2,y:.65});return;}
+  if(n===3){sources.push({x:.15,y:.5},{x:.3,y:.25},{x:.3,y:.75});return;}
+  sources.push({x:.15,y:.35},{x:.15,y:.65},{x:.3,y:.2},{x:.3,y:.8});
+}
+
+function init(){
+  const pr=params();
+  makeSources(pr.nS);
+  rho=new Float32Array(N*N);
+  t_sim=0;
+}
+
+function plasmaColor(t){
+  t=Math.max(0,Math.min(1,t));
+  // purple->orange->yellow->white inferno-like
+  if(t<.25){const s=t/.25;return[Math.round(s*180),Math.round(s*30),Math.round(100+s*100)];}
+  if(t<.5){const s=(t-.25)/.25;return[Math.round(180+s*75),Math.round(30+s*90),Math.round(200-s*150)];}
+  if(t<.75){const s=(t-.5)/.25;return[255,Math.round(120+s*100),Math.round(50-s*50)];}
+  {const s=(t-.75)/.25;return[255,Math.round(220+s*35),Math.round(s*255)];}
+}
+
+function step(){
+  const pr=params();
+  const dx=1/N;
+  const maxU=Math.sqrt(pr.ux*pr.ux+pr.uy*pr.uy)+1e-9;
+  const dt=Math.min(0.4*dx/maxU, 0.4*dx*dx/(4*pr.D));
+  const rn=new Float32Array(N*N);
+  for(let j=1;j<N-1;j++)for(let i=1;i<N-1;i++){
+    const c=rho[j*N+i];
+    const rxp=rho[j*N+i+1],rxm=rho[j*N+i-1];
+    const ryp=rho[(j+1)*N+i],rym=rho[(j-1)*N+i];
+    // Upwind advection
+    const ax=pr.ux>=0?(pr.ux*(c-rxm)/dx):(pr.ux*(rxp-c)/dx);
+    const ay=pr.uy>=0?(pr.uy*(c-rym)/dx):(pr.uy*(ryp-c)/dx);
+    // Diffusion
+    const diff=pr.D*(rxp+rxm+ryp+rym-4*c)/(dx*dx);
+    // Source
+    const x=i/N,y=j/N;
+    let src=0;
+    for(const s of sources)src+=pr.em*0.004*Math.exp(-((x-s.x)**2+(y-s.y)**2)/0.003);
+    rn[j*N+i]=Math.max(0,c+dt*(diff-ax-ay+src));
+  }
+  // Outflow BCs on right/top, reflective on left/bottom
+  for(let j=0;j<N;j++){rn[j*N]=rn[j*N+1];rn[j*N+N-1]=rn[j*N+N-2];}
+  for(let i=0;i<N;i++){rn[i]=rn[N+i];rn[(N-1)*N+i]=rn[(N-2)*N+i];}
+  for(let k=0;k<N*N;k++)rho[k]=rn[k];
+  t_sim+=dt;
+}
+
+function render(){
+  const pr=params();
+  let vmax=1e-10;
+  for(let k=0;k<N*N;k++)if(rho[k]>vmax)vmax=rho[k];
+  const S=sz/N;
+  const img=ctx.createImageData(sz,sz);
+  const d=img.data;
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const t=Math.sqrt(rho[j*N+i]/vmax); // sqrt for better contrast
+    const[r,g,b]=plasmaColor(t);
+    const px=Math.floor(i*S),py=Math.floor(j*S);
+    const pw=Math.ceil(S),ph=Math.ceil(S);
+    for(let dy=0;dy<ph;dy++)for(let dx=0;dx<pw;dx++){
+      const idx=((py+dy)*sz+(px+dx))*4;
+      if(idx+3<d.length){d[idx]=r;d[idx+1]=g;d[idx+2]=b;d[idx+3]=255;}
+    }
+  }
+  ctx.putImageData(img,0,0);
+  // Wind arrow
+  const ang=Math.atan2(pr.uy,pr.ux);
+  const wlen=Math.min(pr.u*200+10,80);
+  const wx=sz-80,wy=60;
+  ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.arc(wx,wy,28,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fef08a';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+wlen*Math.cos(ang),wy+wlen*Math.sin(ang));ctx.stroke();
+  ctx.fillStyle='#fef08a';ctx.font='bold 9px Space Mono,monospace';
+  ctx.textAlign='center';ctx.fillText('wind',wx,wy+40);ctx.textAlign='left';
+
+  // Sources
+  for(const s of sources){
+    ctx.beginPath();ctx.arc(s.x*sz,s.y*sz,7,0,Math.PI*2);
+    ctx.fillStyle='rgba(250,204,21,0.3)';ctx.fill();
+    ctx.strokeStyle='#fef08a';ctx.lineWidth=2;ctx.stroke();
+  }
+  // Pe badge update
+  const Pe=Math.sqrt(pr.ux*pr.ux+pr.uy*pr.uy)*1.0/Math.max(pr.D,1e-9);
+  const regime=Pe<0.5?'diffusion dominated':Pe<5?'mixed regime':'advection dominated';
+  document.getElementById('peBadge').textContent=`Pe = ${Pe.toFixed(1)}  ·  ${regime}`;
+  document.getElementById('stat').textContent=`t = ${t_sim.toFixed(3)} | Pe = ${Pe.toFixed(2)} | max ρ = ${vmax.toFixed(5)}`;
+  ctx.fillStyle='rgba(255,255,255,0.85)';ctx.fillRect(4,4,240,18);
+  ctx.fillStyle='#713f12';ctx.font='11px Space Mono,monospace';
+  ctx.fillText(`Adv-Diff  Pe=${Pe.toFixed(1)}  t=${t_sim.toFixed(3)}`,8,16);
+}
+
+function loop(){
+  const pr=params();
+  for(let s=0;s<pr.spf;s++)step();
+  render();
+  if(running)animId=requestAnimationFrame(loop);
+}
+
+['sU','sTh','sD','sNS','sEm','sSF'].forEach(id=>{
+  const el=document.getElementById(id),vid='v'+id.slice(1);
+  el.oninput=()=>{document.getElementById(vid).textContent=parseFloat(el.value).toFixed(2);};
+});
+
+document.getElementById('bStart').onclick=()=>{
+  running=!running;
+  document.getElementById('bStart').textContent=running?'⏸ Pause':'▶ Start';
+  if(running)loop();
+};
+document.getElementById('bReset').onclick=()=>{
+  running=false;document.getElementById('bStart').textContent='▶ Start';
+  cancelAnimationFrame(animId);init();render();
+};
+document.getElementById('bHelp').onclick=()=>document.getElementById('modal').style.display='block';
+document.getElementById('closeM').onclick=()=>document.getElementById('modal').style.display='none';
+
+init();render();
+</script>
+</body>
+</html>
